@@ -121,10 +121,18 @@ export const Lobby: React.FC<LobbyProps> = ({ initialRoom, onJoin }) => {
         skillLevels,
         skillPoints: remainingSkillPoints,
         equipment: {
+          head: '',
           weapon: cls.group === 'Magic' ? 'คทามานาฝึกหัด' : cls.id === 'ranger' ? 'ธนูยาว' : cls.id === 'rogue' ? 'มีดสั้นคู่' : 'ดาบ/ค้อนเหล็กกล้า',
+          offhand: cls.id === 'paladin' || cls.id === 'fighter' ? 'โล่ไม้โอ๊ค' : '',
           armor: cls.group === 'Aura' || cls.id === 'paladin' ? 'เกราะโซ่ / เกราะหนัง' : 'เสื้อคลุมนักผจญภัย',
           accessory: 'ตราประจำกิลด์ Crosshaven',
-          bag: ['ยาฟื้นฟู HP x2', 'เสบียงแห้ง x3', '10 Gold']
+          boots: 'รองเท้าหนังนักเดินทาง',
+          gold: 10,
+          bag: [
+            { id: 'st_1', name: 'ยาฟื้นฟู HP', icon: '🧪', qty: 2 },
+            { id: 'st_2', name: 'เสบียงแห้ง', icon: '🍖', qty: 3 },
+            { id: 'st_3', name: 'คบเพลิง', icon: '🔥', qty: 2 }
+          ]
         }
       };
     }

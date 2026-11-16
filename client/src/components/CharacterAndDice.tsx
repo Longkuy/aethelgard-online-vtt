@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ACTS } from '../data/aethelgard';
-import { Dices, Crown, PlusCircle, Shield, Sword, Backpack, Sparkles, Plus, X, User, Upload } from 'lucide-react';
+import { Dices, Crown, PlusCircle, Backpack, Plus, X, User, Upload } from 'lucide-react';
 
 interface CharacterAndDiceProps {
   character: any;
@@ -16,6 +16,18 @@ interface CharacterAndDiceProps {
 
 const ENTITY_ICONS = ['👺', '🐺', '🐉', '🦇', '💀', '🧙', '🧝', '🍺', '👑', '🛡️'];
 const STAT_LABELS = ['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA'];
+const ITEM_ICONS = ['🧪', '🍖', '⚔️', '🛡️', '💍', '🗝️', '📜', '💎', '🔥', '🎒'];
+const EQUIP_SLOTS = [
+  { key: 'head' as const, label: 'หมวก/ศีรษะ', emoji: '🪖' },
+  { key: 'weapon' as const, label: 'อาวุธหลัก', emoji: '⚔️' },
+  { key: 'offhand' as const, label: 'มือรอง/โล่', emoji: '🛡️' },
+  { key: 'armor' as const, label: 'ชุดเกราะ', emoji: '🥋' },
+  { key: 'accessory' as const, label: 'เครื่องประดับ', emoji: '💍' },
+  { key: 'boots' as const, label: 'รองเท้า', emoji: '🥾' }
+];
+type EquipSlotKey = typeof EQUIP_SLOTS[number]['key'];
+type BagItem = { id: string; name: string; icon: string; qty: number };
+const BAG_CAPACITY = 12;
 
 export const CharacterAndDice: React.FC<CharacterAndDiceProps> = ({
   character,
@@ -30,9 +42,14 @@ export const CharacterAndDice: React.FC<CharacterAndDiceProps> = ({
 }) => {
   const [tab, setTab] = useState<'sheet' | 'dm'>(isDM ? 'dm' : 'sheet');
   const [mod, setMod] = useState(0);
-  const [newItem, setNewItem] = useState('');
-  const [editingSlot, setEditingSlot] = useState<'weapon' | 'armor' | 'accessory' | null>(null);
+
+  // Equipment & Bag Slot UI state
+  const [editingSlot, setEditingSlot] = useState<EquipSlotKey | null>(null);
   const [slotInput, setSlotInput] = useState('');
+  const [selectedBagIdx, setSelectedBagIdx] = useState<number | null>(null);
+  const [newItemName, setNewItemName] = useState('');
+  const [newItemIcon, setNewItemIcon] = useState('🧪');
+  const [newItemQty, setNewItemQty] = useState(1);
 
   // Custom Spawner state (DM Only)
   const [spName, setSpName] = useState('');
@@ -46,30 +63,83 @@ export const CharacterAndDice: React.FC<CharacterAndDiceProps> = ({
   const activeTab = isDM ? tab : 'sheet';
 
   const equip = character?.equipment || {
+    head: '',
     weapon: 'อาวุธเริ่มต้น',
+    offhand: '',
     armor: 'ชุดนักผจญภัย',
-    accessory: '—',
+    accessory: '',
+    boots: '',
+    gold: 0,
     bag: []
   };
 
-  const handleSaveSlot = (slot: 'weapon' | 'armor' | 'accessory') => {
+  // Normalize legacy string bag items into structured BagItem objects
+  const normalizedBag: (BagItem | null)[] = Array.from({ length: BAG_CAPACITY }, (_, idx) => {
+    const raw = (equip.bag || [])[idx];
+    if (!raw) return null;
+    if (typeof raw === 'string') {
+      return { id: `legacy_${idx}`, name: raw, icon: '🎒', qty: 1 };
+    }
+    return raw;
+  });
+
+  const compactBag = (slots: (BagItem | null)[]) => slots.filter((s): s is BagItem => s !== null);
+
+  const handleSaveSlot = (slot: EquipSlotKey) => {
     if (!character) return;
-    onUpdateEquipment(character.id, { ...equip, [slot]: slotInput.trim() || '—' });
+    onUpdateEquipment(character.id, { ...equip, [slot]: slotInput.trim() });
     setEditingSlot(null);
   };
 
-  const handleAddBagItem = (e: React.FormEvent) => {
+  const handleClearSlot = (slot: EquipSlotKey) => {
+    if (!character) return;
+    onUpdateEquipment(character.id, { ...equip, [slot]: '' });
+    setEditingSlot(null);
+  };
+
+  const handleAdjustGold = (delta: number) => {
+    if (!character) return;
+    const nextGold = Math.max(0, (Number(equip.gold) || 0) + delta);
+    onUpdateEquipment(character.id, { ...equip, gold: nextGold });
+  };
+
+  const handleSaveBagSlot = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!character || !newItem.trim()) return;
-    onUpdateEquipment(character.id, { ...equip, bag: [...(equip.bag || []), newItem.trim()] });
-    setNewItem('');
+    if (!character || selectedBagIdx === null || !newItemName.trim()) return;
+    const nextSlots = [...normalizedBag];
+    nextSlots[selectedBagIdx] = {
+      id: 'item_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5),
+      name: newItemName.trim(),
+      icon: newItemIcon,
+      qty: Math.max(1, newItemQty)
+    };
+    onUpdateEquipment(character.id, { ...equip, bag: compactBag(nextSlots) });
+    setSelectedBagIdx(null);
+    setNewItemName('');
+    setNewItemQty(1);
+  };
+
+  const handleBagQty = (idx: number, delta: number) => {
+    if (!character) return;
+    const nextSlots = [...normalizedBag];
+    const item = nextSlots[idx];
+    if (!item) return;
+    const nextQty = item.qty + delta;
+    if (nextQty <= 0) {
+      nextSlots[idx] = null;
+      setSelectedBagIdx(null);
+    } else {
+      nextSlots[idx] = { ...item, qty: nextQty };
+    }
+    onUpdateEquipment(character.id, { ...equip, bag: compactBag(nextSlots) });
   };
 
   const handleRemoveBagItem = (idx: number) => {
     if (!character) return;
-    const nextBag = [...(equip.bag || [])];
-    nextBag.splice(idx, 1);
-    onUpdateEquipment(character.id, { ...equip, bag: nextBag });
+    const nextSlots = [...normalizedBag];
+    nextSlots[idx] = null;
+    onUpdateEquipment(character.id, { ...equip, bag: compactBag(nextSlots) });
+    setSelectedBagIdx(null);
   };
 
   const handleSpawnAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -232,71 +302,240 @@ export const CharacterAndDice: React.FC<CharacterAndDiceProps> = ({
                 </div>
               )}
 
-              {/* Equipment Slots */}
+              {/* Equipment Slots (6-Slot RPG Grid) */}
               <div className="space-y-1.5">
-                <div className="text-[11px] font-semibold text-slate-400">⚔️ ของสวมใส่ (คลิกเพื่อแก้ไข)</div>
-                {[
-                  { key: 'weapon' as const, label: 'อาวุธ', icon: <Sword className="w-3.5 h-3.5 text-rose-400" />, val: equip.weapon },
-                  { key: 'armor' as const, label: 'ชุดเกราะ', icon: <Shield className="w-3.5 h-3.5 text-sky-400" />, val: equip.armor },
-                  { key: 'accessory' as const, label: 'เครื่องประดับ', icon: <Sparkles className="w-3.5 h-3.5 text-amber-400" />, val: equip.accessory }
-                ].map((slot) => (
-                  <div key={slot.key} className="p-2 rounded-xl bg-slate-950 border border-slate-800">
-                    {editingSlot === slot.key ? (
-                      <div className="flex gap-1">
-                        <input
-                          type="text"
-                          value={slotInput}
-                          onChange={(e) => setSlotInput(e.target.value)}
-                          autoFocus
-                          className="flex-1 bg-slate-900 border border-indigo-500 rounded px-2 py-0.5 text-xs focus:outline-none"
-                          onKeyDown={(e) => e.key === 'Enter' && handleSaveSlot(slot.key)}
-                        />
-                        <button onClick={() => handleSaveSlot(slot.key)} className="px-2 py-0.5 rounded bg-indigo-600 text-white font-bold">
-                          บันทึก
-                        </button>
-                      </div>
-                    ) : (
+                <div className="text-[11px] font-semibold text-slate-400">⚔️ ช่องสวมใส่ (คลิกช่องเพื่อใส่/เปลี่ยน)</div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {EQUIP_SLOTS.map((slot) => {
+                    const val = (equip[slot.key] as string) || '';
+                    const isEditing = editingSlot === slot.key;
+                    return (
                       <button
-                        onClick={() => { setEditingSlot(slot.key); setSlotInput(slot.val || ''); }}
-                        className="w-full flex items-center justify-between text-left hover:opacity-80"
+                        key={slot.key}
+                        type="button"
+                        onClick={() => {
+                          if (isEditing) {
+                            setEditingSlot(null);
+                          } else {
+                            setEditingSlot(slot.key);
+                            setSlotInput(val);
+                          }
+                        }}
+                        className={`p-2 rounded-xl border text-left transition cursor-pointer ${
+                          isEditing
+                            ? 'bg-indigo-950/60 border-indigo-500'
+                            : val
+                            ? 'bg-slate-950 border-slate-700/80 hover:border-indigo-500/70'
+                            : 'bg-slate-950/50 border-dashed border-slate-800 hover:border-slate-600'
+                        }`}
                       >
-                        <span className="flex items-center gap-1.5 text-slate-400 shrink-0">
-                          {slot.icon} {slot.label}:
-                        </span>
-                        <span className="font-semibold text-slate-100 truncate ml-2">{slot.val || '—'}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-base leading-none shrink-0">{slot.emoji}</span>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-[10px] text-slate-400 leading-tight">{slot.label}</div>
+                            <div className={`text-[11px] font-semibold truncate ${val ? 'text-slate-100' : 'text-slate-600 italic'}`}>
+                              {val || 'ว่าง'}
+                            </div>
+                          </div>
+                        </div>
                       </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              {/* Inventory Bag */}
-              <div className="space-y-1.5">
-                <div className="text-[11px] font-semibold text-slate-400 flex items-center gap-1">
-                  <Backpack className="w-3.5 h-3.5 text-emerald-400" /> กระเป๋าไอเทม
+                    );
+                  })}
                 </div>
-                <div className="space-y-1">
-                  {(equip.bag || []).map((item: string, idx: number) => (
-                    <div key={idx} className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-800">
-                      <span className="truncate text-slate-200">{item}</span>
-                      <button onClick={() => handleRemoveBagItem(idx)} className="text-slate-500 hover:text-rose-400 ml-2">
-                        <X className="w-3.5 h-3.5" />
+
+                {editingSlot && (
+                  <div className="p-2 rounded-xl bg-slate-950 border border-indigo-500/70 space-y-1.5">
+                    <div className="text-[10px] text-indigo-300 font-semibold">
+                      แก้ไขช่อง: {EQUIP_SLOTS.find((s) => s.key === editingSlot)?.label}
+                    </div>
+                    <div className="flex gap-1">
+                      <input
+                        type="text"
+                        value={slotInput}
+                        onChange={(e) => setSlotInput(e.target.value)}
+                        autoFocus
+                        placeholder="ชื่อไอเทมสวมใส่..."
+                        className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-indigo-500"
+                        onKeyDown={(e) => e.key === 'Enter' && handleSaveSlot(editingSlot)}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleSaveSlot(editingSlot)}
+                        className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold"
+                      >
+                        ใส่
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleClearSlot(editingSlot)}
+                        className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-rose-600/80 text-slate-300 hover:text-white"
+                        title="ถอดออก"
+                      >
+                        ถอด
                       </button>
                     </div>
-                  ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Gold Purse */}
+              <div className="flex items-center justify-between px-2.5 py-2 rounded-xl bg-slate-950 border border-amber-500/30">
+                <div className="flex items-center gap-1.5 font-bold text-amber-300">
+                  <span>💰</span>
+                  <span className="font-mono text-sm">{Number(equip.gold) || 0}</span>
+                  <span className="text-[10px] text-amber-400/80 font-normal">Gold</span>
                 </div>
-                <form onSubmit={handleAddBagItem} className="flex gap-1 pt-1">
-                  <input
-                    type="text"
-                    value={newItem}
-                    onChange={(e) => setNewItem(e.target.value)}
-                    placeholder="เพิ่มไอเทม / เงิน..."
-                    className="flex-1 px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs focus:outline-none focus:border-indigo-500"
-                  />
-                  <button type="submit" className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white">
-                    <Plus className="w-3.5 h-3.5" />
-                  </button>
-                </form>
+                <div className="flex items-center gap-1 text-[11px] font-mono">
+                  <button onClick={() => handleAdjustGold(-1)} className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300">-1</button>
+                  <button onClick={() => handleAdjustGold(1)} className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-amber-300">+1</button>
+                  <button onClick={() => handleAdjustGold(5)} className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-amber-300">+5</button>
+                </div>
+              </div>
+
+              {/* Inventory Bag (12-Slot RPG Grid) */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-[11px] font-semibold text-slate-400">
+                  <span className="flex items-center gap-1">
+                    <Backpack className="w-3.5 h-3.5 text-emerald-400" /> สล็อตกระเป๋า ({compactBag(normalizedBag).length}/{BAG_CAPACITY})
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-4 gap-1.5">
+                  {normalizedBag.map((item, idx) => {
+                    const isSelected = selectedBagIdx === idx;
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          if (isSelected) {
+                            setSelectedBagIdx(null);
+                          } else {
+                            setSelectedBagIdx(idx);
+                            setNewItemName(item?.name || '');
+                            setNewItemIcon(item?.icon || '🧪');
+                            setNewItemQty(item?.qty || 1);
+                          }
+                        }}
+                        title={item ? `${item.name} (x${item.qty})` : `ช่องว่าง #${idx + 1} (คลิกเพื่อเพิ่ม)`}
+                        className={`relative h-14 rounded-xl border flex flex-col items-center justify-center p-1 transition cursor-pointer ${
+                          isSelected
+                            ? 'bg-emerald-950/60 border-emerald-400 ring-1 ring-emerald-400/50'
+                            : item
+                            ? 'bg-slate-950 border-slate-700/80 hover:border-emerald-500/70'
+                            : 'bg-slate-950/40 border-dashed border-slate-800 hover:border-slate-600 text-slate-600 hover:text-slate-400'
+                        }`}
+                      >
+                        {item ? (
+                          <>
+                            <span className="text-lg leading-none">{item.icon}</span>
+                            <span className="text-[9px] text-slate-300 truncate w-full text-center mt-0.5 px-0.5">
+                              {item.name}
+                            </span>
+                            {item.qty > 1 && (
+                              <span className="absolute top-0.5 right-1 text-[9px] font-mono font-bold text-emerald-300 bg-slate-900/90 px-1 rounded">
+                                x{item.qty}
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          <Plus className="w-3.5 h-3.5 opacity-50" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Selected Bag Slot Actions / Editor */}
+                {selectedBagIdx !== null && (
+                  <div className="p-2.5 rounded-xl bg-slate-950 border border-emerald-500/60 space-y-2">
+                    {normalizedBag[selectedBagIdx] ? (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 font-bold text-slate-100 truncate">
+                            <span className="text-base">{normalizedBag[selectedBagIdx]!.icon}</span>
+                            <span className="truncate">{normalizedBag[selectedBagIdx]!.name}</span>
+                            <span className="text-[11px] font-mono text-emerald-400">x{normalizedBag[selectedBagIdx]!.qty}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedBagIdx(null)}
+                            className="text-slate-500 hover:text-slate-300"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-3 gap-1.5 text-[11px] font-bold">
+                          <button
+                            type="button"
+                            onClick={() => handleBagQty(selectedBagIdx, -1)}
+                            className="py-1 rounded-lg bg-emerald-600/20 border border-emerald-500/50 text-emerald-300 hover:bg-emerald-600/40"
+                          >
+                            ใช้ (-1)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleBagQty(selectedBagIdx, 1)}
+                            className="py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200"
+                          >
+                            เพิ่ม (+1)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveBagItem(selectedBagIdx)}
+                            className="py-1 rounded-lg bg-rose-600/20 border border-rose-500/40 text-rose-300 hover:bg-rose-600/40"
+                          >
+                            ทิ้ง
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <form onSubmit={handleSaveBagSlot} className="space-y-2">
+                        <div className="flex items-center justify-between text-[11px] font-bold text-emerald-300">
+                          <span>เพิ่มไอเทมลงสล็อต #{selectedBagIdx + 1}</span>
+                          <button type="button" onClick={() => setSelectedBagIdx(null)} className="text-slate-500 hover:text-slate-300">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {ITEM_ICONS.map((ic) => (
+                            <button
+                              key={ic}
+                              type="button"
+                              onClick={() => setNewItemIcon(ic)}
+                              className={`w-6 h-6 rounded border text-xs ${
+                                newItemIcon === ic ? 'bg-emerald-600 border-white' : 'bg-slate-900 border-slate-800'
+                              }`}
+                            >
+                              {ic}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="flex gap-1">
+                          <input
+                            type="text"
+                            value={newItemName}
+                            onChange={(e) => setNewItemName(e.target.value)}
+                            autoFocus
+                            placeholder="ชื่อไอเทม..."
+                            className="flex-1 px-2 py-1 rounded-lg bg-slate-900 border border-slate-700 text-xs focus:outline-none focus:border-emerald-500"
+                          />
+                          <input
+                            type="number"
+                            min={1}
+                            value={newItemQty}
+                            onChange={(e) => setNewItemQty(Number(e.target.value))}
+                            className="w-12 px-1.5 py-1 rounded-lg bg-slate-900 border border-slate-700 text-xs text-center font-mono"
+                            title="จำนวน"
+                          />
+                          <button type="submit" className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold">
+                            ใส่
+                          </button>
+                        </div>
+                      </form>
+                    )}
+                  </div>
+                )}
               </div>
             </>
           )}
