@@ -11,9 +11,10 @@ const ICONS = ['⚔️', '🔮', '🛡️', '🏹', '🗡️', '🕊️', '🐉'
 const COLORS = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ec4899', '#06b6d4'];
 
 export const Lobby: React.FC<LobbyProps> = ({ initialRoom, onJoin }) => {
+  const hasUrlRoom = new URLSearchParams(window.location.search).has('room');
   const [roomId, setRoomId] = useState(initialRoom || 'AETHEL');
   const [playerName, setPlayerName] = useState('');
-  const [role, setRole] = useState<'player' | 'dm'>('player');
+  const [role, setRole] = useState<'player' | 'dm'>(hasUrlRoom ? 'player' : 'dm');
   const [mode, setMode] = useState<'create' | 'quick'>('create');
 
   // Character builder state
