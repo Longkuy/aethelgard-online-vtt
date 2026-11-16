@@ -266,7 +266,7 @@ export function applyRoomAction(prevRoom: any, action: { type: string; payload?:
     }
 
     case 'spawn_custom_entity': {
-      const { name, kind, hp, ac, init, icon } = payload;
+      const { name, kind, hp, ac, init, icon, avatarUrl } = payload;
       const isEnemy = kind !== 'npc';
       const id = (isEnemy ? 'en_' : 'npc_') + Date.now() + '_' + Math.random().toString(36).slice(2, 5);
       const maxHp = Math.max(1, Number(hp) || 10);
@@ -283,6 +283,7 @@ export function applyRoomAction(prevRoom: any, action: { type: string; payload?:
         resName: isEnemy ? 'Skill' : 'Role',
         init: Number(init) || rollDie(20),
         icon: icon || (isEnemy ? '👺' : '🧑'),
+        avatarUrl: avatarUrl || null,
         color: isEnemy ? '#e11d48' : '#eab308',
         isEnemy
       };
@@ -291,6 +292,7 @@ export function applyRoomAction(prevRoom: any, action: { type: string; payload?:
         id,
         label: entity.name.slice(0, 6),
         icon: entity.icon,
+        avatarUrl: entity.avatarUrl,
         color: entity.color,
         x: isEnemy ? 10 : 7,
         y: 4,

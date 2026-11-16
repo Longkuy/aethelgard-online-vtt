@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ACTS } from '../data/aethelgard';
-import { Dices, Crown, PlusCircle, Shield, Sword, Backpack, Sparkles, Plus, X, User } from 'lucide-react';
+import { Dices, Crown, PlusCircle, Shield, Sword, Backpack, Sparkles, Plus, X, User, Upload } from 'lucide-react';
 
 interface CharacterAndDiceProps {
   character: any;
@@ -10,7 +10,7 @@ interface CharacterAndDiceProps {
   onUpdateEquipment: (charId: string, equipment: any) => void;
   onSetAct: (act: string | number) => void;
   onSpawnEnemies: () => void;
-  onSpawnCustom: (entity: { name: string; kind: 'enemy' | 'npc'; hp: number; ac: number; init: number; icon: string }) => void;
+  onSpawnCustom: (entity: { name: string; kind: 'enemy' | 'npc'; hp: number; ac: number; init: number; icon: string; avatarUrl?: string | null }) => void;
   onResetRoom: () => void;
 }
 
@@ -41,6 +41,7 @@ export const CharacterAndDice: React.FC<CharacterAndDiceProps> = ({
   const [spAc, setSpAc] = useState(13);
   const [spInit, setSpInit] = useState(12);
   const [spIcon, setSpIcon] = useState('👺');
+  const [spAvatarUrl, setSpAvatarUrl] = useState<string | null>(null);
 
   const activeTab = isDM ? tab : 'sheet';
 
@@ -71,6 +72,29 @@ export const CharacterAndDice: React.FC<CharacterAndDiceProps> = ({
     onUpdateEquipment(character.id, { ...equip, bag: nextBag });
   };
 
+  const handleSpawnAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 128;
+        canvas.height = 128;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        const size = Math.min(img.width, img.height);
+        const sx = (img.width - size) / 2;
+        const sy = (img.height - size) / 2;
+        ctx.drawImage(img, sx, sy, size, size, 0, 0, 128, 128);
+        setSpAvatarUrl(canvas.toDataURL('image/jpeg', 0.8));
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSpawnCustom = (e: React.FormEvent) => {
     e.preventDefault();
     onSpawnCustom({
@@ -79,9 +103,11 @@ export const CharacterAndDice: React.FC<CharacterAndDiceProps> = ({
       hp: spHp,
       ac: spAc,
       init: spInit,
-      icon: spIcon
+      icon: spIcon,
+      avatarUrl: spAvatarUrl
     });
     setSpName('');
+    setSpAvatarUrl(null);
   };
 
   return (
@@ -320,6 +346,33 @@ export const CharacterAndDice: React.FC<CharacterAndDiceProps> = ({
               <div className="bg-slate-900 border border-slate-800 rounded-lg p-1">
                 <div className="text-[10px] text-slate-400">Init</div>
                 <input type="number" value={spInit} onChange={(e) => setSpInit(Number(e.target.value))} className="w-full text-center bg-transparent font-mono font-bold" />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-full bg-slate-900 border border-slate-700 overflow-hidden flex items-center justify-center shrink-0">
+                {spAvatarUrl ? (
+                  <img src={spAvatarUrl} alt="spawn-avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-lg">{spIcon}</span>
+                )}
+              </div>
+              <div className="flex-1 flex items-center gap-1.5">
+                <label className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 cursor-pointer font-semibold transition">
+                  <Upload className="w-3.5 h-3.5 text-amber-400" />
+                  <span>{spAvatarUrl ? 'เปลี่ยนรูป' : 'ใส่รูป'}</span>
+                  <input type="file" accept="image/*" onChange={handleSpawnAvatarUpload} className="hidden" />
+                </label>
+                {spAvatarUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setSpAvatarUrl(null)}
+                    className="px-2 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-400 hover:text-rose-400 transition"
+                    title="ลบรูป"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
             </div>
 
