@@ -1,0 +1,18 @@
+{
+  "name": "aethelgard-online-vtt",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Aethelgard Online Virtual Tabletop (Roll20-style) with real-time Socket.IO rooms and intuitive per-character Skill UI",
+  "scripts": {
+    "install:all": "npm install && npm --prefix client install",
+    "dev:server": "node server/index.js",
+    "dev:client": "npm --prefix client run dev",
+    "build": "npm --prefix client run build",
+    "start": "NODE_ENV=production node server/index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1"
+  }
+}
