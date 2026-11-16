@@ -10,6 +10,7 @@ interface TurnTrackerProps {
   onSelectChar: (id: string) => void;
   onRollInit: () => void;
   onNextTurn: () => void;
+  onRemoveEntity: (id: string) => void;
 }
 
 export const TurnTracker: React.FC<TurnTrackerProps> = ({
@@ -20,7 +21,8 @@ export const TurnTracker: React.FC<TurnTrackerProps> = ({
   isDM,
   onSelectChar,
   onRollInit,
-  onNextTurn
+  onNextTurn,
+  onRemoveEntity
 }) => {
   const sorted = [...party].sort((a, b) => (b.init || 0) - (a.init || 0));
   const activeId = sorted[turnIndex % Math.max(1, sorted.length)]?.id;
@@ -84,9 +86,20 @@ export const TurnTracker: React.FC<TurnTrackerProps> = ({
                   )}
                   <span className="font-semibold text-xs truncate text-slate-100">{c.name.split('(')[0].trim()}</span>
                 </div>
-                <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded font-bold shrink-0 ${isTurn ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-400'}`}>
-                  {c.init || 0}
-                </span>
+                <div className="flex items-center gap-1 shrink-0">
+                  <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded font-bold ${isTurn ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-400'}`}>
+                    {c.init || 0}
+                  </span>
+                  {isDM && (
+                    <span
+                      onClick={(e) => { e.stopPropagation(); onRemoveEntity(c.id); }}
+                      className="text-[10px] text-slate-500 hover:text-rose-400 px-1"
+                      title="ลบออกจากกระดาน"
+                    >
+                      ✕
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div className="mt-1.5 flex items-center gap-2">

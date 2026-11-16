@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ACTS } from '../data/aethelgard';
-import { MessageSquare, Dices, Crown, Send } from 'lucide-react';
+import { MessageSquare, Dices, Crown, Send, PlusCircle } from 'lucide-react';
 
 interface ChatAndDiceProps {
   logs: any[];
@@ -11,8 +11,11 @@ interface ChatAndDiceProps {
   onSendChat: (text: string, isNarration?: boolean) => void;
   onSetAct: (act: string | number) => void;
   onSpawnEnemies: () => void;
+  onSpawnCustom: (entity: { name: string; kind: 'enemy' | 'npc'; hp: number; ac: number; init: number; icon: string }) => void;
   onResetRoom: () => void;
 }
+
+const ENTITY_ICONS = ['👺', '🐺', '🐉', '🦇', '💀', '🧙', '🧝', '🍺', '👑', '🛡️'];
 
 export const ChatAndDice: React.FC<ChatAndDiceProps> = ({
   logs,
@@ -22,11 +25,22 @@ export const ChatAndDice: React.FC<ChatAndDiceProps> = ({
   onSendChat,
   onSetAct,
   onSpawnEnemies,
+  onSpawnCustom,
   onResetRoom
 }) => {
   const [tab, setTab] = useState<'chat' | 'dm'>('chat');
   const [text, setText] = useState('');
   const [mod, setMod] = useState(0);
+
+  // Custom Spawner state (DM Only)
+  const [spName, setSpName] = useState('');
+  const [spKind, setSpKind] = useState<'enemy' | 'npc'>('enemy');
+  const [spHp, setSpHp] = useState(12);
+  const [spAc, setSpAc] = useState(13);
+  const [spInit, setSpInit] = useState(12);
+  const [spIcon, setSpIcon] = useState('👺');
+
+  const activeTab = isDM ? tab : 'chat';
 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,32 +49,47 @@ export const ChatAndDice: React.FC<ChatAndDiceProps> = ({
     setText('');
   };
 
+  const handleSpawnCustom = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSpawnCustom({
+      name: spName.trim() || (spKind === 'enemy' ? 'มอนสเตอร์' : 'NPC'),
+      kind: spKind,
+      hp: spHp,
+      ac: spAc,
+      init: spInit,
+      icon: spIcon
+    });
+    setSpName('');
+  };
+
   return (
-    <aside className="w-80 bg-slate-900 border-l border-slate-800 flex flex-col shrink-0">
-      {/* Tabs */}
-      <div className="flex border-b border-slate-800 text-xs font-bold">
+    <aside className="w-76 bg-slate-900/95 border-l border-slate-800/80 flex flex-col shrink-0">
+      {/* Tabs — DM sees both, Normal Player only sees Chat & Dice */}
+      <div className="flex border-b border-slate-800/80 text-xs font-bold">
         <button
           onClick={() => setTab('chat')}
           className={`flex-1 py-2.5 flex items-center justify-center gap-1.5 border-b-2 transition ${
-            tab === 'chat' ? 'border-indigo-500 text-white bg-slate-800/40' : 'border-transparent text-slate-400 hover:text-slate-200'
+            activeTab === 'chat' ? 'border-indigo-500 text-white bg-slate-800/40' : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
           <MessageSquare className="w-3.5 h-3.5" /> แชท & ทอยเต๋า
         </button>
-        <button
-          onClick={() => setTab('dm')}
-          className={`flex-1 py-2.5 flex items-center justify-center gap-1.5 border-b-2 transition ${
-            tab === 'dm' ? 'border-amber-500 text-amber-300 bg-slate-800/40' : 'border-transparent text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <Crown className="w-3.5 h-3.5" /> ฉาก & DM Tools
-        </button>
+        {isDM && (
+          <button
+            onClick={() => setTab('dm')}
+            className={`flex-1 py-2.5 flex items-center justify-center gap-1.5 border-b-2 transition ${
+              activeTab === 'dm' ? 'border-amber-500 text-amber-300 bg-slate-800/40' : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Crown className="w-3.5 h-3.5" /> DM Tools
+          </button>
+        )}
       </div>
 
-      {tab === 'chat' ? (
+      {activeTab === 'chat' ? (
         <>
           {/* Quick Dice Bar */}
-          <div className="p-2.5 border-b border-slate-800 bg-slate-950/50 space-y-2">
+          <div className="p-2.5 border-b border-slate-800/80 bg-slate-950/50 space-y-2">
             <div className="flex items-center justify-between text-[11px] text-slate-400">
               <span className="flex items-center gap-1 font-semibold"><Dices className="w-3.5 h-3.5 text-indigo-400" /> ทอยด่วน</span>
               <div className="flex items-center gap-1">
@@ -159,7 +188,7 @@ export const ChatAndDice: React.FC<ChatAndDiceProps> = ({
           </div>
 
           {/* Chat Input */}
-          <form onSubmit={handleSend} className="p-2.5 border-t border-slate-800 flex gap-1.5">
+          <form onSubmit={handleSend} className="p-2.5 border-t border-slate-800/80 flex gap-1.5">
             <input
               type="text"
               value={text}
@@ -173,8 +202,73 @@ export const ChatAndDice: React.FC<ChatAndDiceProps> = ({
           </form>
         </>
       ) : (
-        /* DM & Scene Tools */
+        /* DM ONLY PANEL */
         <div className="flex-1 overflow-y-auto custom-scroll p-3 space-y-4 text-xs">
+          {/* Custom Monster / NPC Spawner */}
+          <form onSubmit={handleSpawnCustom} className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-2.5">
+            <div className="font-bold text-amber-300 flex items-center gap-1.5">
+              <PlusCircle className="w-4 h-4" /> เสก NPC / มอนสเตอร์กำหนดเอง
+            </div>
+
+            <div className="grid grid-cols-2 gap-1.5">
+              <button
+                type="button"
+                onClick={() => { setSpKind('enemy'); setSpIcon('👺'); }}
+                className={`py-1.5 rounded-lg border font-bold ${spKind === 'enemy' ? 'bg-rose-600/25 border-rose-500 text-rose-300' : 'border-slate-800 text-slate-400'}`}
+              >
+                👺 มอนสเตอร์
+              </button>
+              <button
+                type="button"
+                onClick={() => { setSpKind('npc'); setSpIcon('🧑'); }}
+                className={`py-1.5 rounded-lg border font-bold ${spKind === 'npc' ? 'bg-amber-600/25 border-amber-500 text-amber-300' : 'border-slate-800 text-slate-400'}`}
+              >
+                🧑 NPC
+              </button>
+            </div>
+
+            <input
+              type="text"
+              value={spName}
+              onChange={(e) => setSpName(e.target.value)}
+              placeholder={spKind === 'enemy' ? 'ชื่อมอนสเตอร์ (เช่น ไวเวิร์นคลั่ง)' : 'ชื่อ NPC (เช่น พ่อค้าซิกกี้)'}
+              className="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 focus:outline-none focus:border-amber-500"
+            />
+
+            <div className="grid grid-cols-3 gap-1.5 text-center">
+              <div className="bg-slate-900 border border-slate-800 rounded-lg p-1">
+                <div className="text-[10px] text-slate-400">HP</div>
+                <input type="number" min={1} value={spHp} onChange={(e) => setSpHp(Number(e.target.value))} className="w-full text-center bg-transparent font-mono font-bold" />
+              </div>
+              <div className="bg-slate-900 border border-slate-800 rounded-lg p-1">
+                <div className="text-[10px] text-slate-400">AC</div>
+                <input type="number" min={1} value={spAc} onChange={(e) => setSpAc(Number(e.target.value))} className="w-full text-center bg-transparent font-mono font-bold" />
+              </div>
+              <div className="bg-slate-900 border border-slate-800 rounded-lg p-1">
+                <div className="text-[10px] text-slate-400">Init</div>
+                <input type="number" value={spInit} onChange={(e) => setSpInit(Number(e.target.value))} className="w-full text-center bg-transparent font-mono font-bold" />
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-1">
+              {ENTITY_ICONS.map((ic) => (
+                <button
+                  key={ic}
+                  type="button"
+                  onClick={() => setSpIcon(ic)}
+                  className={`w-6 h-6 rounded border text-xs ${spIcon === ic ? 'bg-amber-500 border-white' : 'bg-slate-900 border-slate-800'}`}
+                >
+                  {ic}
+                </button>
+              ))}
+            </div>
+
+            <button type="submit" className="w-full py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold">
+              ✨ เสกลงกระดาน
+            </button>
+          </form>
+
+          {/* Quick Scene Switcher */}
           <div className="space-y-2">
             <div className="font-bold text-slate-300">🗺️ เปลี่ยนฉากแผนที่ (Scenes)</div>
             <div className="grid grid-cols-1 gap-1.5">
@@ -182,7 +276,7 @@ export const ChatAndDice: React.FC<ChatAndDiceProps> = ({
                 <button
                   key={String(a)}
                   onClick={() => onSetAct(a)}
-                  className={`text-left p-2.5 rounded-xl border transition ${
+                  className={`text-left p-2 rounded-xl border transition ${
                     act === a ? 'bg-indigo-600/20 border-indigo-500 text-white' : 'bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800'
                   }`}
                 >
@@ -205,21 +299,18 @@ export const ChatAndDice: React.FC<ChatAndDiceProps> = ({
           </div>
 
           <div className="space-y-2 pt-2 border-t border-slate-800">
-            <div className="font-bold text-slate-300">⚔️ เครื่องมือ DM</div>
             <button
               onClick={onSpawnEnemies}
               className="w-full py-2 rounded-lg bg-rose-600/20 border border-rose-500/40 text-rose-300 hover:bg-rose-600/30 font-bold"
             >
-              🐺 เสกมอนสเตอร์ Act 3 (ก็อบลิน 2 + หมาป่า Miasma 1)
+              🐺 เสกชุดมอนสเตอร์ Act 3 (ด่วน)
             </button>
-            {isDM && (
-              <button
-                onClick={onResetRoom}
-                className="w-full py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold"
-              >
-                ↺ รีเซ็ตห้องใหม่ทั้งหมด
-              </button>
-            )}
+            <button
+              onClick={onResetRoom}
+              className="w-full py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold"
+            >
+              ↺ รีเซ็ตห้องใหม่ทั้งหมด
+            </button>
           </div>
         </div>
       )}

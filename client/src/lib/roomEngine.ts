@@ -265,6 +265,52 @@ export function applyRoomAction(prevRoom: any, action: { type: string; payload?:
       return { room };
     }
 
+    case 'spawn_custom_entity': {
+      const { name, kind, hp, ac, init, icon } = payload;
+      const isEnemy = kind !== 'npc';
+      const id = (isEnemy ? 'en_' : 'npc_') + Date.now() + '_' + Math.random().toString(36).slice(2, 5);
+      const maxHp = Math.max(1, Number(hp) || 10);
+      const entity = {
+        id,
+        name: name || (isEnemy ? 'มอนสเตอร์' : 'NPC'),
+        raceName: isEnemy ? 'Monster' : 'NPC',
+        className: isEnemy ? 'Enemy' : 'Friendly',
+        hp: maxHp,
+        maxHp,
+        ac: Number(ac) || 12,
+        mp: 2,
+        maxMp: 2,
+        resName: isEnemy ? 'Skill' : 'Role',
+        init: Number(init) || rollDie(20),
+        icon: icon || (isEnemy ? '👺' : '🧑'),
+        color: isEnemy ? '#e11d48' : '#eab308',
+        isEnemy
+      };
+      room.party.push(entity);
+      room.tokens.push({
+        id,
+        label: entity.name.slice(0, 6),
+        icon: entity.icon,
+        color: entity.color,
+        x: isEnemy ? 10 : 7,
+        y: 4,
+        type: isEnemy ? 'enemy' : 'npc'
+      });
+      pushLog(room, {
+        type: 'system',
+        who: 'DM',
+        text: `${isEnemy ? '⚠️ เสกมอนสเตอร์:' : '🧑 เสก NPC:'} ${entity.name} (HP ${maxHp}, AC ${entity.ac})`
+      });
+      return { room };
+    }
+
+    case 'remove_entity': {
+      const { charId } = payload;
+      room.party = room.party.filter((m: any) => m.id !== charId);
+      room.tokens = room.tokens.filter((t: any) => t.id !== charId);
+      return { room };
+    }
+
     case 'chat_message': {
       const { sender, text, isNarration } = payload;
       pushLog(room, {

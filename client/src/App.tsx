@@ -5,6 +5,7 @@ import { BattlemapCanvas } from './components/BattlemapCanvas';
 import { SkillHotbar } from './components/SkillHotbar';
 import { TurnTracker } from './components/TurnTracker';
 import { ChatAndDice } from './components/ChatAndDice';
+import { DiceRollOverlay } from './components/DiceRollOverlay';
 import { SkillDef } from './data/aethelgard';
 import { createInitialRoomState, applyRoomAction } from './lib/roomEngine';
 import { Share2, LogOut, Swords, Check, PanelLeft, PanelRight } from 'lucide-react';
@@ -291,6 +292,9 @@ export function App() {
         </div>
       )}
 
+      {/* Animated Dice Roll Overlay */}
+      <DiceRollOverlay latestLog={roomState.logs?.[0]} />
+
       {/* Main Roll20 3-Column Workspace */}
       <div className="flex-1 flex min-h-0 overflow-hidden">
         {showLeft && (
@@ -303,6 +307,7 @@ export function App() {
             onSelectChar={(id) => setSelectedCharId(id)}
             onRollInit={() => dispatchAction({ type: 'roll_initiative' })}
             onNextTurn={() => dispatchAction({ type: 'next_turn' })}
+            onRemoveEntity={(charId) => dispatchAction({ type: 'remove_entity', payload: { charId } })}
           />
         )}
 
@@ -348,6 +353,7 @@ export function App() {
             }
             onSetAct={(act) => dispatchAction({ type: 'set_act', payload: act })}
             onSpawnEnemies={() => dispatchAction({ type: 'spawn_enemies' })}
+            onSpawnCustom={(entity) => dispatchAction({ type: 'spawn_custom_entity', payload: entity })}
             onResetRoom={() => dispatchAction({ type: 'reset_room' })}
           />
         )}
