@@ -4,7 +4,7 @@ import { Lobby } from './components/Lobby';
 import { BattlemapCanvas } from './components/BattlemapCanvas';
 import { SkillHotbar } from './components/SkillHotbar';
 import { TurnTracker } from './components/TurnTracker';
-import { ChatAndDice } from './components/ChatAndDice';
+import { CharacterAndDice } from './components/CharacterAndDice';
 import { DiceRollOverlay } from './components/DiceRollOverlay';
 import { SkillDef } from './data/aethelgard';
 import { createInitialRoomState, applyRoomAction } from './lib/roomEngine';
@@ -340,16 +340,19 @@ export function App() {
         </div>
 
         {showRight && (
-          <ChatAndDice
-            logs={roomState.logs}
+          <CharacterAndDice
+            character={
+              isDM
+                ? activeChar
+                : roomState.party.find((c: any) => c.id === session.myCharId) || activeChar
+            }
             act={roomState.act}
             isDM={isDM}
-            playerName={session.playerName}
-            onRollDice={(sides, mod, mode) =>
-              dispatchAction({ type: 'roll_dice', payload: { sides, mod, mode, rollerName: session.playerName } })
+            onRollDice={(sides, mod, mode, label) =>
+              dispatchAction({ type: 'roll_dice', payload: { sides, mod, mode, label, rollerName: session.playerName } })
             }
-            onSendChat={(text, isNarration) =>
-              dispatchAction({ type: 'chat_message', payload: { sender: session.playerName, text, isNarration } })
+            onUpdateEquipment={(charId, equipment) =>
+              dispatchAction({ type: 'update_equipment', payload: { charId, equipment } })
             }
             onSetAct={(act) => dispatchAction({ type: 'set_act', payload: act })}
             onSpawnEnemies={() => dispatchAction({ type: 'spawn_enemies' })}

@@ -311,6 +311,15 @@ export function applyRoomAction(prevRoom: any, action: { type: string; payload?:
       return { room };
     }
 
+    case 'update_equipment': {
+      const { charId, equipment } = payload;
+      const c = room.party.find((m: any) => m.id === charId);
+      if (c) {
+        c.equipment = equipment;
+      }
+      return { room };
+    }
+
     case 'chat_message': {
       const { sender, text, isNarration } = payload;
       pushLog(room, {
