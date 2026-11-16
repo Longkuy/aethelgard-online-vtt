@@ -7,7 +7,7 @@ import { TurnTracker } from './components/TurnTracker';
 import { ChatAndDice } from './components/ChatAndDice';
 import { SkillDef } from './data/aethelgard';
 import { createInitialRoomState, applyRoomAction } from './lib/roomEngine';
-import { Share2, LogOut, Swords, Check } from 'lucide-react';
+import { Share2, LogOut, Swords, Check, PanelLeft, PanelRight } from 'lucide-react';
 
 export function App() {
   const peerRef = useRef<Peer | null>(null);
@@ -22,6 +22,8 @@ export function App() {
   const [toast, setToast] = useState<string | null>(null);
   const [connectingMsg, setConnectingMsg] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showLeft, setShowLeft] = useState(true);
+  const [showRight, setShowRight] = useState(true);
 
   const urlRoom = new URLSearchParams(window.location.search).get('room') || 'AETHEL';
 
@@ -249,13 +251,28 @@ export function App() {
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setShowLeft((v) => !v)}
+            className={`p-1.5 rounded-lg border text-xs transition ${showLeft ? 'bg-slate-800 border-slate-700 text-white' : 'border-transparent text-slate-400 hover:bg-slate-800'}`}
+            title="ซ่อน/แสดงแถบปาร์ตี้"
+          >
+            <PanelLeft className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setShowRight((v) => !v)}
+            className={`p-1.5 rounded-lg border text-xs transition ${showRight ? 'bg-slate-800 border-slate-700 text-white' : 'border-transparent text-slate-400 hover:bg-slate-800'}`}
+            title="ซ่อน/แสดงแชทและเต๋า"
+          >
+            <PanelRight className="w-4 h-4" />
+          </button>
+          <div className="h-4 w-px bg-slate-800 mx-0.5" />
           <button
             onClick={copyInvite}
             className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
           >
             {copied ? <Check className="w-3.5 h-3.5" /> : <Share2 className="w-3.5 h-3.5" />}
-            {copied ? 'คัดลอกลิงก์แล้ว!' : 'ชวนเพื่อนเข้าห้อง'}
+            {copied ? 'คัดลอกลิงก์แล้ว!' : 'ชวนเพื่อน'}
           </button>
           <button
             onClick={() => window.location.reload()}
@@ -276,18 +293,20 @@ export function App() {
 
       {/* Main Roll20 3-Column Workspace */}
       <div className="flex-1 flex min-h-0 overflow-hidden">
-        <TurnTracker
-          party={roomState.party}
-          turnIndex={roomState.turnIndex}
-          selectedCharId={selectedCharId}
-          players={roomState.players}
-          isDM={isDM}
-          onSelectChar={(id) => setSelectedCharId(id)}
-          onRollInit={() => dispatchAction({ type: 'roll_initiative' })}
-          onNextTurn={() => dispatchAction({ type: 'next_turn' })}
-        />
+        {showLeft && (
+          <TurnTracker
+            party={roomState.party}
+            turnIndex={roomState.turnIndex}
+            selectedCharId={selectedCharId}
+            players={roomState.players}
+            isDM={isDM}
+            onSelectChar={(id) => setSelectedCharId(id)}
+            onRollInit={() => dispatchAction({ type: 'roll_initiative' })}
+            onNextTurn={() => dispatchAction({ type: 'next_turn' })}
+          />
+        )}
 
-        {/* Center Map + Bottom Skill Hotbar */}
+        {/* Center Map + Floating Bottom Skill Hotbar */}
         <div className="flex-1 flex flex-col min-w-0 relative">
           <BattlemapCanvas
             act={roomState.act}
@@ -314,21 +333,23 @@ export function App() {
           />
         </div>
 
-        <ChatAndDice
-          logs={roomState.logs}
-          act={roomState.act}
-          isDM={isDM}
-          playerName={session.playerName}
-          onRollDice={(sides, mod, mode) =>
-            dispatchAction({ type: 'roll_dice', payload: { sides, mod, mode, rollerName: session.playerName } })
-          }
-          onSendChat={(text, isNarration) =>
-            dispatchAction({ type: 'chat_message', payload: { sender: session.playerName, text, isNarration } })
-          }
-          onSetAct={(act) => dispatchAction({ type: 'set_act', payload: act })}
-          onSpawnEnemies={() => dispatchAction({ type: 'spawn_enemies' })}
-          onResetRoom={() => dispatchAction({ type: 'reset_room' })}
-        />
+        {showRight && (
+          <ChatAndDice
+            logs={roomState.logs}
+            act={roomState.act}
+            isDM={isDM}
+            playerName={session.playerName}
+            onRollDice={(sides, mod, mode) =>
+              dispatchAction({ type: 'roll_dice', payload: { sides, mod, mode, rollerName: session.playerName } })
+            }
+            onSendChat={(text, isNarration) =>
+              dispatchAction({ type: 'chat_message', payload: { sender: session.playerName, text, isNarration } })
+            }
+            onSetAct={(act) => dispatchAction({ type: 'set_act', payload: act })}
+            onSpawnEnemies={() => dispatchAction({ type: 'spawn_enemies' })}
+            onResetRoom={() => dispatchAction({ type: 'reset_room' })}
+          />
+        )}
       </div>
     </div>
   );

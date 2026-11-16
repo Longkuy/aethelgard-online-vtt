@@ -40,7 +40,7 @@ export const BattlemapCanvas: React.FC<BattlemapCanvasProps> = ({
   onPingMap
 }) => {
   const [zoom, setZoom] = useState(1);
-  const [gridOpacity, setGridOpacity] = useState(25);
+  const [gridOpacity, setGridOpacity] = useState(18);
   const [activeTokenId, setActiveTokenId] = useState<string | null>(null);
   const [pingMode, setPingMode] = useState(false);
 
@@ -68,49 +68,42 @@ export const BattlemapCanvas: React.FC<BattlemapCanvasProps> = ({
 
   return (
     <div className="relative flex-1 bg-slate-950 overflow-hidden flex flex-col">
-      {/* Top Floating Scene Bar */}
-      <div className="absolute top-3 left-3 right-3 z-20 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
-        <div className="pointer-events-auto bg-slate-900/90 backdrop-blur border border-slate-700/80 rounded-xl px-3.5 py-2 shadow-lg">
-          <div className="text-xs font-bold text-slate-100">{scene.title}</div>
-          <div className="text-[11px] text-slate-400">{scene.badge} • คลิกหมากแล้วคลิกช่องเพื่อเดิน</div>
-        </div>
-
-        <div className="pointer-events-auto flex items-center gap-1.5 bg-slate-900/90 backdrop-blur border border-slate-700/80 rounded-xl p-1.5 shadow-lg text-xs">
-          <button
-            onClick={() => setPingMode(!pingMode)}
-            className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1 font-semibold transition ${
-              pingMode ? 'bg-amber-500 text-slate-950' : 'hover:bg-slate-800 text-slate-200'
-            }`}
-            title="ชี้ตำแหน่งบนแผนที่ให้เพื่อนเห็น"
-          >
-            <Crosshair className="w-3.5 h-3.5" /> Ping
-          </button>
-          <div className="h-4 w-px bg-slate-700" />
-          <Grid className="w-3.5 h-3.5 text-slate-400 ml-1" />
-          <input
-            type="range"
-            min={0}
-            max={70}
-            value={gridOpacity}
-            onChange={(e) => setGridOpacity(Number(e.target.value))}
-            className="w-16 accent-indigo-500"
-            title="ความชัดตาราง"
-          />
-          <div className="h-4 w-px bg-slate-700" />
-          <button onClick={() => setZoom((z) => Math.max(0.75, z - 0.15))} className="p-1.5 rounded-lg hover:bg-slate-800">
-            <ZoomOut className="w-3.5 h-3.5" />
-          </button>
-          <span className="font-mono text-[11px] w-10 text-center">{Math.round(zoom * 100)}%</span>
-          <button onClick={() => setZoom((z) => Math.min(1.6, z + 0.15))} className="p-1.5 rounded-lg hover:bg-slate-800">
-            <ZoomIn className="w-3.5 h-3.5" />
-          </button>
-        </div>
+      {/* Minimal Floating Map Controls (Top-Right) */}
+      <div className="absolute top-3 right-3 z-20 flex items-center gap-1 bg-slate-900/85 backdrop-blur-md border border-slate-700/60 rounded-full px-2.5 py-1 shadow-xl text-xs">
+        <button
+          onClick={() => setPingMode(!pingMode)}
+          className={`px-2 py-1 rounded-full flex items-center gap-1 font-medium transition ${
+            pingMode ? 'bg-amber-500 text-slate-950' : 'hover:bg-slate-800 text-slate-300'
+          }`}
+          title="ชี้ตำแหน่งบนแผนที่"
+        >
+          <Crosshair className="w-3.5 h-3.5" /> Ping
+        </button>
+        <div className="h-3.5 w-px bg-slate-700/70 mx-0.5" />
+        <Grid className="w-3.5 h-3.5 text-slate-400" />
+        <input
+          type="range"
+          min={0}
+          max={60}
+          value={gridOpacity}
+          onChange={(e) => setGridOpacity(Number(e.target.value))}
+          className="w-12 accent-indigo-500"
+          title="ความชัดตาราง"
+        />
+        <div className="h-3.5 w-px bg-slate-700/70 mx-0.5" />
+        <button onClick={() => setZoom((z) => Math.max(0.75, z - 0.15))} className="p-1 rounded-full hover:bg-slate-800 text-slate-300">
+          <ZoomOut className="w-3.5 h-3.5" />
+        </button>
+        <span className="font-mono text-[11px] w-9 text-center text-slate-300">{Math.round(zoom * 100)}%</span>
+        <button onClick={() => setZoom((z) => Math.min(1.6, z + 0.15))} className="p-1 rounded-full hover:bg-slate-800 text-slate-300">
+          <ZoomIn className="w-3.5 h-3.5" />
+        </button>
       </div>
 
-      {/* Scrollable Map Viewport */}
-      <div className="flex-1 overflow-auto flex items-center justify-center p-4 pb-36 custom-scroll">
+      {/* Map Viewport */}
+      <div className="flex-1 overflow-auto flex items-center justify-center p-4 pb-28 custom-scroll">
         <div
-          className="relative w-full max-w-5xl aspect-video rounded-xl overflow-hidden border border-slate-700 shadow-2xl transition-transform origin-center select-none"
+          className="relative w-full max-w-5xl aspect-video rounded-2xl overflow-hidden border border-slate-800 shadow-2xl transition-transform origin-center select-none"
           style={{ transform: `scale(${zoom})` }}
         >
           <img src={scene.mapImg} alt={scene.title} className="absolute inset-0 w-full h-full object-cover" />
@@ -129,13 +122,13 @@ export const BattlemapCanvas: React.FC<BattlemapCanvasProps> = ({
                     key={`${x}-${y}`}
                     onClick={() => handleCellClick(x, y)}
                     style={{ borderColor: `rgba(255,255,255,${gridOpacity / 100})` }}
-                    className={`border relative flex items-center justify-center cursor-pointer transition hover:bg-white/15 ${
+                    className={`border relative flex items-center justify-center cursor-pointer transition hover:bg-white/10 ${
                       isMiasma ? 'bg-purple-600/20' : ''
-                    } ${activeTokenId && !token ? 'hover:ring-1 hover:ring-emerald-400' : ''}`}
+                    } ${activeTokenId && !token ? 'hover:ring-1 hover:ring-emerald-400/70' : ''}`}
                   >
                     {token && (
                       <div
-                        className={`w-[82%] h-[82%] rounded-full flex flex-col items-center justify-center shadow-xl border-2 transition-transform ${
+                        className={`w-[80%] h-[80%] rounded-full flex flex-col items-center justify-center shadow-lg border-2 transition-transform ${
                           isMoving
                             ? 'border-amber-300 ring-4 ring-amber-400/50 scale-115'
                             : isSelected
@@ -166,11 +159,8 @@ export const BattlemapCanvas: React.FC<BattlemapCanvasProps> = ({
                 top: `${((p.y + 0.5) / 9) * 100}%`
               }}
             >
-              <div
-                className="w-12 h-12 rounded-full border-4 map-ping-ring"
-                style={{ borderColor: p.color }}
-              />
-              <span className="absolute -top-6 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded bg-slate-900/90 text-[10px] font-bold text-white whitespace-nowrap">
+              <div className="w-12 h-12 rounded-full border-4 map-ping-ring" style={{ borderColor: p.color }} />
+              <span className="absolute -top-6 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-slate-900/90 text-[10px] font-bold text-white whitespace-nowrap shadow">
                 {p.senderName}
               </span>
             </div>

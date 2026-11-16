@@ -27,13 +27,13 @@ export const TurnTracker: React.FC<TurnTrackerProps> = ({
   const onlineList = Object.values(players || {});
 
   return (
-    <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col shrink-0">
-      <div className="p-3 border-b border-slate-800 flex items-center justify-between">
-        <h2 className="font-bold text-xs uppercase tracking-wider text-slate-300">Turn Tracker</h2>
+    <aside className="w-56 bg-slate-900/95 border-r border-slate-800/80 flex flex-col shrink-0">
+      <div className="p-2.5 border-b border-slate-800/80 flex items-center justify-between">
+        <h2 className="font-bold text-xs uppercase tracking-wider text-slate-400">ปาร์ตี้ & เทิร์น</h2>
         <div className="flex gap-1">
           <button
             onClick={onRollInit}
-            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs"
+            className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-xs"
             title="ทอย Initiative ทั้งหมด"
           >
             <Dices className="w-3.5 h-3.5" />
@@ -50,7 +50,7 @@ export const TurnTracker: React.FC<TurnTrackerProps> = ({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scroll p-2.5 space-y-2">
+      <div className="flex-1 overflow-y-auto custom-scroll p-2 space-y-1.5">
         {sorted.map((c) => {
           const isTurn = c.id === activeId;
           const isSel = c.id === selectedCharId;
@@ -60,28 +60,24 @@ export const TurnTracker: React.FC<TurnTrackerProps> = ({
             <button
               key={c.id}
               onClick={() => onSelectChar(c.id)}
-              className={`w-full text-left p-2.5 rounded-xl border transition cursor-pointer ${
+              className={`w-full text-left p-2 rounded-xl border transition cursor-pointer ${
                 isSel
-                  ? 'border-indigo-500 bg-indigo-950/30 ring-1 ring-indigo-500/50'
+                  ? 'border-indigo-500/80 bg-indigo-950/30'
                   : isTurn
-                  ? 'border-amber-500/70 bg-amber-950/20'
+                  ? 'border-amber-500/60 bg-amber-950/20'
                   : c.isEnemy
-                  ? 'border-rose-900/50 bg-rose-950/15 hover:bg-rose-950/30'
-                  : 'border-slate-800 bg-slate-950/60 hover:bg-slate-800/70'
+                  ? 'border-rose-900/40 bg-rose-950/15 hover:bg-rose-950/30'
+                  : 'border-slate-800/70 bg-slate-950/50 hover:bg-slate-800/60'
               }`}
             >
               <div className="flex items-center justify-between gap-1.5">
                 <div className="flex items-center gap-1.5 min-w-0">
                   <span className="text-sm">{c.icon}</span>
-                  <span className="font-bold text-xs truncate text-slate-100">{c.name}</span>
+                  <span className="font-semibold text-xs truncate text-slate-100">{c.name.split('(')[0].trim()}</span>
                 </div>
-                <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded font-bold shrink-0 ${isTurn ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-300'}`}>
+                <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded font-bold shrink-0 ${isTurn ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-400'}`}>
                   {c.init || 0}
                 </span>
-              </div>
-
-              <div className="text-[10px] text-slate-400 truncate mt-0.5">
-                {c.raceName} • {c.className}
               </div>
 
               <div className="mt-1.5 flex items-center gap-2">
@@ -91,7 +87,7 @@ export const TurnTracker: React.FC<TurnTrackerProps> = ({
                     style={{ width: `${pct}%` }}
                   />
                 </div>
-                <span className="text-[10px] font-mono text-slate-300">
+                <span className="text-[10px] font-mono text-slate-400">
                   {c.hp}/{c.maxHp}
                 </span>
               </div>
