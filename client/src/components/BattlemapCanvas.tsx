@@ -6,6 +6,7 @@ interface Token {
   id: string;
   label: string;
   icon: string;
+  avatarUrl?: string | null;
   color: string;
   x: number;
   y: number;
@@ -128,7 +129,7 @@ export const BattlemapCanvas: React.FC<BattlemapCanvasProps> = ({
                   >
                     {token && (
                       <div
-                        className={`w-[80%] h-[80%] rounded-full flex flex-col items-center justify-center shadow-lg border-2 transition-transform ${
+                        className={`w-[82%] h-[82%] rounded-full flex flex-col items-center justify-center shadow-lg border-2 overflow-hidden transition-transform ${
                           isMoving
                             ? 'border-amber-300 ring-4 ring-amber-400/50 scale-115'
                             : isSelected
@@ -136,11 +137,18 @@ export const BattlemapCanvas: React.FC<BattlemapCanvasProps> = ({
                             : 'border-white/90 hover:scale-105'
                         }`}
                         style={{ backgroundColor: token.color }}
+                        title={token.label}
                       >
-                        <span className="text-sm leading-none">{token.icon}</span>
-                        <span className="text-[9px] font-bold text-white leading-none mt-0.5 drop-shadow truncate max-w-[90%]">
-                          {token.label}
-                        </span>
+                        {token.avatarUrl ? (
+                          <img src={token.avatarUrl} alt={token.label} className="w-full h-full object-cover" />
+                        ) : (
+                          <>
+                            <span className="text-sm leading-none">{token.icon}</span>
+                            <span className="text-[9px] font-bold text-white leading-none mt-0.5 drop-shadow truncate max-w-[90%]">
+                              {token.label}
+                            </span>
+                          </>
+                        )}
                       </div>
                     )}
                   </div>

@@ -19,81 +19,15 @@ export function createInitialRoomState(roomId: string) {
     roomId,
     act: 1 as string | number,
     turnIndex: 0,
-    party: [
-      {
-        id: 'demo_kai',
-        name: 'ไค (Kai)',
-        player: 'Demo',
-        raceId: 'human',
-        raceName: 'มนุษย์ (Imperial)',
-        classId: 'warrior',
-        className: 'นักรบ (Swordmaster)',
-        hp: 14,
-        maxHp: 14,
-        ac: 15,
-        mp: 4,
-        maxMp: 4,
-        resName: 'Aura',
-        init: 14,
-        icon: '⚔️',
-        color: '#10b981',
-        isEnemy: false,
-        stats: [16, 13, 14, 10, 11, 12]
-      },
-      {
-        id: 'demo_luna',
-        name: 'ลูนาเรีย (Lunaria)',
-        player: 'Demo',
-        raceId: 'elf',
-        raceName: 'เอลฟ์ (High Elf)',
-        classId: 'mage',
-        className: 'นักเวท (Elementalist)',
-        hp: 9,
-        maxHp: 9,
-        ac: 12,
-        mp: 6,
-        maxMp: 6,
-        resName: 'Mana',
-        init: 16,
-        icon: '🔮',
-        color: '#8b5cf6',
-        isEnemy: false,
-        stats: [8, 14, 12, 17, 13, 11]
-      },
-      {
-        id: 'demo_sera',
-        name: 'เซราฟิม (Seraphim)',
-        player: 'Demo',
-        raceId: 'dwarf',
-        raceName: 'คนแคระ (Mountain)',
-        classId: 'paladin',
-        className: 'พาลาดิน (Protection)',
-        hp: 15,
-        maxHp: 15,
-        ac: 17,
-        mp: 4,
-        maxMp: 4,
-        resName: 'Faith',
-        init: 11,
-        icon: '🛡️',
-        color: '#f59e0b',
-        isEnemy: false,
-        stats: [15, 10, 16, 9, 13, 14]
-      }
-    ],
-    tokens: [
-      { id: 'demo_kai', label: 'ไค', icon: '⚔️', color: '#10b981', x: 2, y: 3, type: 'party' },
-      { id: 'demo_luna', label: 'ลูน่า', icon: '🔮', color: '#8b5cf6', x: 1, y: 4, type: 'party' },
-      { id: 'demo_sera', label: 'เซรา', icon: '🛡️', color: '#f59e0b', x: 2, y: 5, type: 'party' },
-      { id: 'npc_thomas', label: 'โทมัส', icon: '🌿', color: '#eab308', x: 13, y: 2, type: 'npc' }
-    ],
+    party: [] as any[],
+    tokens: [] as any[],
     players: {} as Record<string, any>,
     logs: [
       {
         id: 'init_1',
         type: 'system',
         who: 'SYSTEM',
-        text: `เปิดห้องผจญภัย "${roomId}" แล้ว! กดปุ่ม "ชวนเพื่อนเข้าห้อง" เพื่อส่งลิงก์ให้เพื่อนได้เลย`,
+        text: `เปิดห้องผจญภัย "${roomId}" แล้ว! กดปุ่ม "ชวนเพื่อน" เพื่อส่งลิงก์ให้เพื่อนเข้ามาสร้างตัวละครได้เลย`,
         time: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
       }
     ]
@@ -124,9 +58,10 @@ export function applyRoomAction(prevRoom: any, action: { type: string; payload?:
             id: character.id,
             label: character.name.slice(0, 6),
             icon: character.icon || '🌟',
+            avatarUrl: character.avatarUrl || null,
             color: character.color || '#3b82f6',
-            x: 3,
-            y: 4,
+            x: 2 + (room.tokens.length % 4),
+            y: 3 + Math.floor(room.tokens.length / 4),
             type: 'party'
           });
         }
@@ -174,10 +109,34 @@ export function applyRoomAction(prevRoom: any, action: { type: string; payload?:
       return { room };
     }
 
+    case 'upgrade_skill': {
+      const { charId, skillId } = payload;
+      const c = room.party.find((m: any) => m.id === charId);
+      if (!c) return { room: prevRoom };
+      if ((c.skillPoints || 0) <= 0) {
+        return { room: prevRoom, error: 'Skill Point (SP) ไม่พอ!' };
+      }
+      c.skillLevels = c.skillLevels || {};
+      const curLv = c.skillLevels[skillId] || 1;
+      if (curLv >= 3) {
+        return { room: prevRoom, error: 'สกิลนี้อัปเต็ม Lv.3 แล้ว!' };
+      }
+      c.skillLevels[skillId] = curLv + 1;
+      c.skillPoints -= 1;
+      pushLog(room, {
+        type: 'system',
+        who: 'UPGRADE',
+        text: `⬆️ ${c.name} อัปเกรดสกิลเป็น Lv.${curLv + 1} (เหลือ ${c.skillPoints} SP)`
+      });
+      return { room };
+    }
+
     case 'cast_skill': {
       const { charId, skill, targetName, mode } = payload;
       const caster = room.party.find((m: any) => m.id === charId);
       const casterName = caster ? caster.name : 'นักผจญภัย';
+      const skillLv = caster?.skillLevels?.[skill.id] || 1;
+      const lvBonus = skillLv - 1; // +0 at Lv1, +1 at Lv2, +2 at Lv3
 
       if (caster && skill.cost > 0) {
         if ((caster.mp || 0) < skill.cost) {
@@ -191,10 +150,11 @@ export function applyRoomAction(prevRoom: any, action: { type: string; payload?:
         const r1 = rollDie(20);
         const r2 = rollDie(20);
         const raw = mode === 'adv' ? Math.max(r1, r2) : mode === 'dis' ? Math.min(r1, r2) : r1;
+        const totalBonus = skill.hitBonus + lvBonus;
         hitResult = {
           raw,
-          total: raw + skill.hitBonus,
-          bonus: skill.hitBonus,
+          total: raw + totalBonus,
+          bonus: totalBonus,
           isCrit: raw === 20,
           isFumble: raw === 1,
           mode: mode || 'normal'
@@ -204,6 +164,7 @@ export function applyRoomAction(prevRoom: any, action: { type: string; payload?:
       let effectResult = null;
       if (skill.dice) {
         effectResult = evalFormula(skill.dice);
+        effectResult.total += lvBonus;
         if (hitResult && hitResult.isCrit) {
           const critExtra = evalFormula(skill.dice);
           effectResult.total += critExtra.total - critExtra.mod;
@@ -216,7 +177,7 @@ export function applyRoomAction(prevRoom: any, action: { type: string; payload?:
         who: casterName,
         casterIcon: caster?.icon || '✨',
         casterColor: caster?.color || '#8b5cf6',
-        skillName: skill.name,
+        skillName: `${skill.name} (Lv.${skillLv})`,
         skillIcon: skill.icon || '✨',
         skillType: skill.type || 'Attack',
         targetName: targetName || null,

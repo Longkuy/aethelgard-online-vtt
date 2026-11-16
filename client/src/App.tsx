@@ -330,6 +330,7 @@ export function App() {
             }
             onUpdateHp={(charId, delta) => dispatchAction({ type: 'update_hp', payload: { charId, delta } })}
             onUpdateResource={(charId, delta) => dispatchAction({ type: 'update_resource', payload: { charId, delta } })}
+            onUpgradeSkill={(charId, skillId) => dispatchAction({ type: 'upgrade_skill', payload: { charId, skillId } })}
           />
         </div>
 

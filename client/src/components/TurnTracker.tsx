@@ -51,6 +51,11 @@ export const TurnTracker: React.FC<TurnTrackerProps> = ({
       </div>
 
       <div className="flex-1 overflow-y-auto custom-scroll p-2 space-y-1.5">
+        {sorted.length === 0 && (
+          <div className="text-center text-[11px] text-slate-500 py-6 px-2">
+            ยังไม่มีผู้เล่นในห้อง<br />ส่งลิงก์ให้เพื่อนเข้ามาสร้างตัวละครได้เลย
+          </div>
+        )}
         {sorted.map((c) => {
           const isTurn = c.id === activeId;
           const isSel = c.id === selectedCharId;
@@ -72,7 +77,11 @@ export const TurnTracker: React.FC<TurnTrackerProps> = ({
             >
               <div className="flex items-center justify-between gap-1.5">
                 <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="text-sm">{c.icon}</span>
+                  {c.avatarUrl ? (
+                    <img src={c.avatarUrl} alt={c.name} className="w-5 h-5 rounded-full object-cover border border-white/50 shrink-0" />
+                  ) : (
+                    <span className="text-sm">{c.icon}</span>
+                  )}
                   <span className="font-semibold text-xs truncate text-slate-100">{c.name.split('(')[0].trim()}</span>
                 </div>
                 <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded font-bold shrink-0 ${isTurn ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-400'}`}>

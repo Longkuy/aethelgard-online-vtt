@@ -17,6 +17,7 @@ export interface RaceDef {
   name: string;
   home: string;
   power: string;
+  baseStats: [number, number, number, number, number, number]; // STR, DEX, CON, INT, WIS, CHA
   pros: string;
   cons: string;
   racialSkill: SkillDef;
@@ -43,6 +44,7 @@ export interface ClassDef {
 export const RACES: RaceDef[] = [
   {
     id: 'elf', icon: '🧝', name: 'เอลฟ์ (Elves)', home: 'ป่าศักดิ์สิทธิ์', power: 'Magic',
+    baseStats: [8, 13, 9, 14, 12, 11],
     pros: 'ดึงมานาธรรมชาติโดยตรงไม่ต้องใช้ Mana Core, เชี่ยวชาญเวทภูติ',
     cons: 'ไม่เก่งระยะประชิด, พึ่งพามานาธรรมชาติสูง',
     racialSkill: {
@@ -58,6 +60,7 @@ export const RACES: RaceDef[] = [
   },
   {
     id: 'human', icon: '🧑', name: 'มนุษย์ (Humans)', home: 'จักรวรรดิมนุษย์', power: 'ทุกสาย',
+    baseStats: [10, 10, 10, 10, 10, 10],
     pros: 'ปรับตัวเก่งที่สุด ไปได้ทุกสายอาชีพ เรียนรู้ทักษะไว',
     cons: 'อายุขัยสั้นที่สุด ไม่มีพรสวรรค์ทางกายภาพติดตัว',
     racialSkill: {
@@ -71,6 +74,7 @@ export const RACES: RaceDef[] = [
   },
   {
     id: 'dwarf', icon: '🧔', name: 'คนแคระ (Dwarves)', home: 'Khazâd-Dûm', power: 'Aura',
+    baseStats: [13, 8, 14, 9, 11, 8],
     pros: 'อึดถึกที่สุด ต้านทานพิษ หลอมผลึก Miasma และซ่อม Artifact ได้',
     cons: 'Mana Core พัฒนาช้า เคลื่อนที่ช้า ไม่ถูกโฉลกกับน้ำหรืออากาศ',
     racialSkill: {
@@ -85,6 +89,7 @@ export const RACES: RaceDef[] = [
   },
   {
     id: 'beastfolk', icon: '🐺', name: 'เผ่าสรรพสัตว์', home: 'Wyldlands', power: 'Aura',
+    baseStats: [13, 13, 12, 8, 11, 8],
     pros: 'พละกำลังและความคล่องตัวสูง ตรวจจับมอนสเตอร์ Miasma ได้ก่อนใคร',
     cons: 'ควบคุมอารมณ์ยาก หากโกรธจัดอาจเสียสติตามสัญชาตญาณสัตว์',
     racialSkill: {
@@ -100,6 +105,7 @@ export const RACES: RaceDef[] = [
   },
   {
     id: 'avian', icon: '🦅', name: 'เผ่าวิหก (Avians)', home: "Aethel's Kingdom", power: 'Aura / ลม',
+    baseStats: [9, 14, 8, 11, 12, 10],
     pros: 'บินได้ คล่องตัวสูง ได้เปรียบด้านภูมิประเทศและการสอดแนม',
     cons: 'กระดูกกลวง รับแรงกระแทกหนักไม่ไหว ใส่เกราะหนักไม่ได้',
     racialSkill: {
@@ -115,6 +121,7 @@ export const RACES: RaceDef[] = [
   },
   {
     id: 'merfolk', icon: '🧜', name: 'เผ่าบาดาล', home: 'Tethys Depths', power: 'Magic (น้ำ)',
+    baseStats: [10, 12, 10, 12, 11, 13],
     pros: 'หายใจใต้น้ำได้ แข็งแกร่งมหาศาลเมื่อสู้ในน้ำหรือใกล้แหล่งน้ำ',
     cons: 'แพ้อากาศแห้งและความร้อนจัด ต้องเติมความชุ่มชื้นเวลาขึ้นบก',
     racialSkill: {
@@ -130,6 +137,7 @@ export const RACES: RaceDef[] = [
   },
   {
     id: 'vampire', icon: '🦇', name: 'แวมไพร์ & กูล', home: 'Realm of Night', power: 'โลหิต / Aura',
+    baseStats: [12, 13, 11, 12, 9, 13],
     pros: 'ฟื้นฟูบาดแผลไว พละกำลังเหนือมนุษย์ มองเห็นในความมืดสนิท',
     cons: 'แพ้แสงแดดและพลังศักดิ์สิทธิ์ (Divine) 2 เท่า ต้องดื่มเลือดคงสติ',
     racialSkill: {
@@ -147,6 +155,7 @@ export const RACES: RaceDef[] = [
   },
   {
     id: 'dragonoid', icon: '🐉', name: 'ดราโกนอยด์', home: 'Dragonoid Peaks', power: 'Aura / ธาตุ',
+    baseStats: [14, 9, 13, 10, 10, 11],
     pros: 'เกล็ดธรรมชาติต้านทานเวทมนตร์ พละกำลังสูง มีลมหายใจธาตุ',
     cons: 'ประชากรน้อย หยิ่งทระนง ใกล้ Miasma เข้มข้นจะคลั่งคล้าย Hydra',
     racialSkill: {
@@ -161,6 +170,7 @@ export const RACES: RaceDef[] = [
   },
   {
     id: 'goblin', icon: '👺', name: 'ก็อบลิน (Goblins)', home: 'Mirewood Jungle', power: 'กับดัก / เวท',
+    baseStats: [7, 13, 8, 14, 10, 9],
     pros: 'ฉลาดมาก เอาตัวรอดเก่ง เจ้าเล่ห์',
     cons: 'อายุขัยน้อย ร่างกายอ่อนแอกว่าเผ่าพันธุ์ใหญ่',
     racialSkill: {
