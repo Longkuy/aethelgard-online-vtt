@@ -174,7 +174,7 @@ export const BattlemapCanvas: React.FC<BattlemapCanvasProps> = ({
 
       {/* Tap-to-move hint (great for mobile touch) */}
       {activeTokenId && tool === 'move' && (
-        <div className="absolute bottom-20 sm:bottom-22 left-1/2 -translate-x-1/2 z-20 px-3 py-1 rounded-full bg-amber-500/95 text-slate-950 text-[11px] font-bold shadow-lg pointer-events-none whitespace-nowrap">
+        <div className="absolute bottom-32 md:bottom-22 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 rounded-full bg-amber-500/95 text-slate-950 text-xs font-bold shadow-lg pointer-events-none whitespace-nowrap">
           👆 แตะช่องบนแผนที่เพื่อเดิน
         </div>
       )}
@@ -183,45 +183,45 @@ export const BattlemapCanvas: React.FC<BattlemapCanvasProps> = ({
       <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-20 flex flex-wrap items-center gap-1 bg-slate-900/90 backdrop-blur-md border border-slate-700/60 rounded-full px-2 sm:px-2.5 py-1 shadow-xl text-[11px] sm:text-xs max-w-[calc(100%-1rem)]">
         <button
           onClick={() => { setTool(tool === 'ping' ? 'move' : 'ping'); setRulerStart(null); }}
-          className={`px-1.5 sm:px-2 py-1 rounded-full flex items-center gap-1 font-medium transition ${
+          className={`px-2 py-1.5 sm:py-1 rounded-full flex items-center gap-1 font-medium transition ${
             tool === 'ping' ? 'bg-amber-500 text-slate-950' : 'hover:bg-slate-800 text-slate-300'
           }`}
           title="ชี้ตำแหน่งบนแผนที่"
         >
-          <Crosshair className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Ping</span>
+          <Crosshair className="w-4 h-4 sm:w-3.5 sm:h-3.5" /> <span className="hidden sm:inline">Ping</span>
         </button>
         <button
           onClick={() => { setTool(tool === 'ruler' ? 'move' : 'ruler'); setRulerStart(null); }}
-          className={`px-1.5 sm:px-2 py-1 rounded-full flex items-center gap-1 font-medium transition ${
+          className={`px-2 py-1.5 sm:py-1 rounded-full flex items-center gap-1 font-medium transition ${
             tool === 'ruler' ? 'bg-sky-500 text-slate-950' : 'hover:bg-slate-800 text-slate-300'
           }`}
           title="วัดระยะ (1 ช่อง = 5 ft)"
         >
-          <Ruler className="w-3.5 h-3.5" /> <span className="hidden sm:inline">วัดระยะ</span>
+          <Ruler className="w-4 h-4 sm:w-3.5 sm:h-3.5" /> <span className="hidden sm:inline">วัดระยะ</span>
         </button>
 
         {isDM && (
           <>
             <button
               onClick={() => { setTool(tool === 'fog' ? 'move' : 'fog'); setRulerStart(null); }}
-              className={`px-1.5 sm:px-2 py-1 rounded-full flex items-center gap-1 font-medium transition ${
+              className={`px-2 py-1.5 sm:py-1 rounded-full flex items-center gap-1 font-medium transition ${
                 tool === 'fog' ? 'bg-purple-500 text-white' : 'hover:bg-slate-800 text-slate-300'
               }`}
               title="วาด/ลบหมอกบังแผนที่ (Fog of War)"
             >
-              <CloudFog className="w-3.5 h-3.5" /> <span className="hidden sm:inline">หมอก</span>
+              <CloudFog className="w-4 h-4 sm:w-3.5 sm:h-3.5" /> <span className="hidden sm:inline">หมอก</span>
             </button>
             {tool === 'fog' && onSetAllFog && (
               <div className="flex items-center gap-1 ml-0.5">
                 <button
                   onClick={() => onSetAllFog(true)}
-                  className="px-2 py-0.5 rounded-full bg-purple-600/40 hover:bg-purple-600 text-[10px] font-bold text-purple-200"
+                  className="px-2 py-1 rounded-full bg-purple-600/40 hover:bg-purple-600 text-[10px] font-bold text-purple-200"
                 >
                   บังหมด
                 </button>
                 <button
                   onClick={() => onSetAllFog(false)}
-                  className="px-2 py-0.5 rounded-full bg-slate-800 hover:bg-slate-700 text-[10px] font-bold text-slate-300"
+                  className="px-2 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-[10px] font-bold text-slate-300"
                 >
                   เปิดหมด
                 </button>
@@ -242,12 +242,12 @@ export const BattlemapCanvas: React.FC<BattlemapCanvasProps> = ({
           title="ความชัดตาราง"
         />
         <div className="h-3.5 w-px bg-slate-700/70 mx-0.5" />
-        <button onClick={() => setZoom((z) => Math.max(0.75, z - 0.15))} className="p-1 rounded-full hover:bg-slate-800 text-slate-300">
-          <ZoomOut className="w-3.5 h-3.5" />
+        <button onClick={() => setZoom((z) => Math.max(0.75, z - 0.15))} className="p-1.5 sm:p-1 rounded-full hover:bg-slate-800 text-slate-300">
+          <ZoomOut className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
         </button>
-        <span className="font-mono text-[10px] sm:text-[11px] w-8 sm:w-9 text-center text-slate-300">{Math.round(zoom * 100)}%</span>
-        <button onClick={() => setZoom((z) => Math.min(1.6, z + 0.15))} className="p-1 rounded-full hover:bg-slate-800 text-slate-300">
-          <ZoomIn className="w-3.5 h-3.5" />
+        <span className="font-mono text-[11px] w-8 sm:w-9 text-center text-slate-300">{Math.round(zoom * 100)}%</span>
+        <button onClick={() => setZoom((z) => Math.min(1.6, z + 0.15))} className="p-1.5 sm:p-1 rounded-full hover:bg-slate-800 text-slate-300">
+          <ZoomIn className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
         </button>
       </div>
 
@@ -261,9 +261,9 @@ export const BattlemapCanvas: React.FC<BattlemapCanvasProps> = ({
       )}
 
       {/* Map Viewport */}
-      <div className="flex-1 overflow-auto flex items-center justify-center p-4 pb-28 custom-scroll">
+      <div className="flex-1 overflow-auto flex items-start sm:items-center justify-start sm:justify-center p-2 sm:p-4 pt-14 sm:pt-4 pb-32 sm:pb-28 custom-scroll touch-pan-x touch-pan-y">
         <div
-          className="relative w-full max-w-5xl aspect-video rounded-2xl overflow-hidden border border-slate-800 shadow-2xl transition-transform origin-center select-none"
+          className="relative min-w-[680px] sm:min-w-0 w-full max-w-5xl aspect-video rounded-2xl overflow-hidden border border-slate-800 shadow-2xl transition-transform origin-top-left sm:origin-center select-none shrink-0"
           style={{ transform: `scale(${zoom})` }}
         >
           <img src={scene.mapImg} alt={scene.title} className="absolute inset-0 w-full h-full object-cover" />

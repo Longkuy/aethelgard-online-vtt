@@ -39,7 +39,7 @@ export const SkillHotbar: React.FC<SkillHotbarProps> = ({
   const selectedTarget = party.find((p) => p.id === targetId) || null;
 
   return (
-    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-2 max-w-[95%]">
+    <div className="absolute bottom-16 md:bottom-3 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-2 max-w-[96%]">
 
       {/* Popover Skill Menu (Opened via Button) */}
       {openMenu && (
@@ -167,24 +167,24 @@ export const SkillHotbar: React.FC<SkillHotbarProps> = ({
 
         <div className="hidden sm:block h-4 w-px bg-slate-800" />
 
-        <div className="flex items-center gap-2 text-[11px] font-mono">
+        <div className="flex items-center gap-2.5 text-xs md:text-[11px] font-mono">
           <span className="flex items-center gap-1 text-rose-300">
             <Heart className="w-3.5 h-3.5 text-rose-400" />
-            <button onClick={() => onUpdateHp(character.id, -1)} className="hover:text-white px-0.5">-</button>
+            <button onClick={() => onUpdateHp(character.id, -1)} className="w-6 h-6 md:w-auto md:h-auto rounded-full bg-slate-800 md:bg-transparent hover:text-white flex items-center justify-center font-bold">-</button>
             <span className="font-bold">{character.hp}/{character.maxHp}</span>
-            <button onClick={() => onUpdateHp(character.id, 1)} className="hover:text-white px-0.5">+</button>
+            <button onClick={() => onUpdateHp(character.id, 1)} className="w-6 h-6 md:w-auto md:h-auto rounded-full bg-slate-800 md:bg-transparent hover:text-white flex items-center justify-center font-bold">+</button>
           </span>
           <span className="flex items-center gap-1 text-sky-300">
             <Zap className="w-3.5 h-3.5 text-sky-400" />
-            <button onClick={() => onUpdateResource(character.id, -1)} className="hover:text-white px-0.5">-</button>
+            <button onClick={() => onUpdateResource(character.id, -1)} className="w-6 h-6 md:w-auto md:h-auto rounded-full bg-slate-800 md:bg-transparent hover:text-white flex items-center justify-center font-bold">-</button>
             <span className="font-bold">{character.mp ?? 0}/{character.maxMp ?? 0}</span>
-            <button onClick={() => onUpdateResource(character.id, 1)} className="hover:text-white px-0.5">+</button>
+            <button onClick={() => onUpdateResource(character.id, 1)} className="w-6 h-6 md:w-auto md:h-auto rounded-full bg-slate-800 md:bg-transparent hover:text-white flex items-center justify-center font-bold">+</button>
           </span>
         </div>
 
         <button
           onClick={() => setOpenMenu((v) => !v)}
-          className={`px-3 sm:px-3.5 py-1 sm:py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
+          className={`px-3.5 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
             openMenu ? 'bg-indigo-500 text-white' : 'bg-indigo-600 hover:bg-indigo-500 text-white'
           }`}
         >

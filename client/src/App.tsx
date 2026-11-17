@@ -426,7 +426,7 @@ export function App() {
         )}
 
         {showLeft && (
-          <div className="fixed inset-y-0 top-12 left-0 z-35 flex md:static md:z-auto shadow-2xl md:shadow-none">
+          <div className="fixed top-12 bottom-14 md:bottom-0 left-0 z-35 flex md:static md:z-auto shadow-2xl md:shadow-none">
             <TurnTracker
               party={roomState.party}
               inCombat={Boolean(roomState.inCombat)}
@@ -488,7 +488,7 @@ export function App() {
         </div>
 
         {showRight && (
-          <div className="fixed inset-y-0 top-12 right-0 z-35 flex md:static md:z-auto shadow-2xl md:shadow-none">
+          <div className="fixed top-12 bottom-14 md:bottom-0 right-0 z-35 flex md:static md:z-auto shadow-2xl md:shadow-none">
             <CharacterAndDice
               character={
                 isDM
@@ -529,6 +529,46 @@ export function App() {
           </div>
         )}
       </div>
+
+      {/* Mobile Bottom Navigation Bar (Thumb-friendly) */}
+      <nav className="md:hidden h-14 bg-slate-900/95 border-t border-slate-800 grid grid-cols-4 shrink-0 z-40">
+        <button
+          onClick={() => { setShowLeft(false); setShowRight(false); setShowLog(false); }}
+          className={`flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition ${
+            !showLeft && !showRight && !showLog ? 'text-indigo-400 bg-indigo-950/30' : 'text-slate-400'
+          }`}
+        >
+          <span className="text-base leading-none">🗺️</span>
+          <span>แผนที่</span>
+        </button>
+        <button
+          onClick={() => { setShowLeft((v) => !v); setShowRight(false); setShowLog(false); }}
+          className={`flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition ${
+            showLeft ? 'text-indigo-400 bg-indigo-950/30' : 'text-slate-400'
+          }`}
+        >
+          <span className="text-base leading-none">👥</span>
+          <span>ปาร์ตี้/เทิร์น</span>
+        </button>
+        <button
+          onClick={() => { setShowRight((v) => !v); setShowLeft(false); setShowLog(false); }}
+          className={`flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition ${
+            showRight ? 'text-indigo-400 bg-indigo-950/30' : 'text-slate-400'
+          }`}
+        >
+          <span className="text-base leading-none">🎒</span>
+          <span>{isDM ? 'ตัวละคร/DM' : 'ตัวละคร/เต๋า'}</span>
+        </button>
+        <button
+          onClick={() => { setShowLog((v) => !v); setShowLeft(false); setShowRight(false); }}
+          className={`flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition ${
+            showLog ? 'text-indigo-400 bg-indigo-950/30' : 'text-slate-400'
+          }`}
+        >
+          <span className="text-base leading-none">📜</span>
+          <span>บันทึก</span>
+        </button>
+      </nav>
     </div>
   );
 }

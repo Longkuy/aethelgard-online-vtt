@@ -256,12 +256,12 @@ export const CharacterAndDice: React.FC<CharacterAndDiceProps> = ({
   };
 
   return (
-    <aside className="w-76 bg-slate-900/95 border-l border-slate-800/80 flex flex-col shrink-0">
+    <aside className="w-[92vw] sm:w-80 md:w-76 bg-slate-900/95 border-l border-slate-800/80 flex flex-col shrink-0">
       {/* Top Tabs: Player only sees Character Sheet; DM sees DM Tools + Inspect */}
       <div className="flex border-b border-slate-800/80 text-xs font-bold">
         <button
           onClick={() => setTab('sheet')}
-          className={`flex-1 py-2.5 flex items-center justify-center gap-1.5 border-b-2 transition ${
+          className={`flex-1 py-3 md:py-2.5 flex items-center justify-center gap-1.5 border-b-2 transition ${
             activeTab === 'sheet' ? 'border-indigo-500 text-white bg-slate-800/40' : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
@@ -270,7 +270,7 @@ export const CharacterAndDice: React.FC<CharacterAndDiceProps> = ({
         {isDM && (
           <button
             onClick={() => setTab('dm')}
-            className={`flex-1 py-2.5 flex items-center justify-center gap-1.5 border-b-2 transition ${
+            className={`flex-1 py-3 md:py-2.5 flex items-center justify-center gap-1.5 border-b-2 transition ${
               activeTab === 'dm' ? 'border-amber-500 text-amber-300 bg-slate-800/40' : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
@@ -283,19 +283,19 @@ export const CharacterAndDice: React.FC<CharacterAndDiceProps> = ({
       <div className="p-2.5 border-b border-slate-800/80 bg-slate-950/50 space-y-2">
         <div className="flex items-center justify-between text-[11px] text-slate-400">
           <span className="flex items-center gap-1 font-semibold"><Dices className="w-3.5 h-3.5 text-indigo-400" /> ทอยลูกเต๋า</span>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
             <span>Mod:</span>
-            <button onClick={() => setMod((m) => m - 1)} className="w-5 h-5 rounded bg-slate-800 hover:bg-slate-700">-</button>
+            <button onClick={() => setMod((m) => m - 1)} className="w-7 h-7 md:w-5 md:h-5 rounded bg-slate-800 hover:bg-slate-700 font-bold">-</button>
             <span className="w-6 text-center font-mono font-bold text-white">{mod >= 0 ? `+${mod}` : mod}</span>
-            <button onClick={() => setMod((m) => m + 1)} className="w-5 h-5 rounded bg-slate-800 hover:bg-slate-700">+</button>
+            <button onClick={() => setMod((m) => m + 1)} className="w-7 h-7 md:w-5 md:h-5 rounded bg-slate-800 hover:bg-slate-700 font-bold">+</button>
           </div>
         </div>
-        <div className="grid grid-cols-6 gap-1 text-[11px] font-bold font-mono">
+        <div className="grid grid-cols-6 gap-1.5 md:gap-1 text-xs md:text-[11px] font-bold font-mono">
           {[4, 6, 8, 10, 12, 20].map((d) => (
             <button
               key={d}
               onClick={() => onRollDice(d, mod, 'normal')}
-              className={`py-1.5 rounded-lg border transition cursor-pointer ${
+              className={`py-2.5 md:py-1.5 rounded-lg border transition cursor-pointer ${
                 d === 20
                   ? 'bg-indigo-600 border-indigo-500 text-white hover:bg-indigo-500'
                   : 'bg-slate-900 border-slate-800 text-slate-200 hover:bg-slate-800'

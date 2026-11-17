@@ -50,7 +50,7 @@ export const TurnTracker: React.FC<TurnTrackerProps> = ({
   const onlineList = Object.values(players || {});
 
   return (
-    <aside className="w-56 bg-slate-900/95 border-r border-slate-800/80 flex flex-col shrink-0">
+    <aside className="w-[85vw] sm:w-64 md:w-56 bg-slate-900/95 border-r border-slate-800/80 flex flex-col shrink-0">
       <div className="p-2.5 border-b border-slate-800/80 space-y-2">
         <div className="flex items-center justify-between">
           <h2 className="font-bold text-xs uppercase tracking-wider text-slate-400">ปาร์ตี้ & เทิร์น</h2>
