@@ -8,7 +8,7 @@ import { CharacterAndDice } from './components/CharacterAndDice';
 import { DiceRollOverlay } from './components/DiceRollOverlay';
 import { SkillDef } from './data/aethelgard';
 import { createInitialRoomState, applyRoomAction } from './lib/roomEngine';
-import { Share2, LogOut, Swords, Check, PanelLeft, PanelRight } from 'lucide-react';
+import { Share2, LogOut, Swords, Check, PanelLeft, PanelRight, ScrollText, X } from 'lucide-react';
 
 export function App() {
   const peerRef = useRef<Peer | null>(null);
@@ -25,6 +25,7 @@ export function App() {
   const [copied, setCopied] = useState(false);
   const [showLeft, setShowLeft] = useState(true);
   const [showRight, setShowRight] = useState(true);
+  const [showLog, setShowLog] = useState(false);
 
   const urlRoom = new URLSearchParams(window.location.search).get('room') || 'AETHEL';
 
@@ -43,9 +44,25 @@ export function App() {
   const broadcastState = (nextState: any) => {
     roomStateRef.current = nextState;
     setRoomState(nextState);
+    try {
+      localStorage.setItem(`aethelgard_room_${nextState.roomId}`, JSON.stringify(nextState));
+    } catch {
+      // ignore storage quota errors
+    }
     connsRef.current.forEach((c) => {
       if (c.open) c.send({ type: 'room_state', state: nextState });
     });
+  };
+
+  const handleExportRoom = () => {
+    if (!roomStateRef.current) return;
+    const blob = new Blob([JSON.stringify(roomStateRef.current, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `aethelgard-room-${roomStateRef.current.roomId}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const dispatchAction = (action: { type: string; payload?: any }) => {
@@ -101,8 +118,19 @@ export function App() {
     const hostPeerId = `aethelgard-vtt-${cleanRoom.toLowerCase()}`;
 
     if (role === 'dm') {
-      // Host creates authoritative state immediately
-      const initial = createInitialRoomState(cleanRoom);
+      // Host creates or restores authoritative state from localStorage
+      let initial = createInitialRoomState(cleanRoom);
+      try {
+        const savedRaw = localStorage.getItem(`aethelgard_room_${cleanRoom}`);
+        if (savedRaw) {
+          const parsed = JSON.parse(savedRaw);
+          if (parsed && Array.isArray(parsed.party) && Array.isArray(parsed.tokens)) {
+            initial = { ...initial, ...parsed, players: {} };
+          }
+        }
+      } catch {
+        // ignore parse errors
+      }
       initial.players['host'] = { socketId: 'host', name: playerName, role: 'dm' };
       roomStateRef.current = initial;
       setRoomState(initial);
@@ -254,6 +282,15 @@ export function App() {
 
         <div className="flex items-center gap-1.5">
           <button
+            onClick={() => setShowLog((v) => !v)}
+            className={`px-2.5 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-1 transition ${
+              showLog ? 'bg-indigo-600/30 border-indigo-500 text-indigo-200' : 'border-transparent text-slate-300 hover:bg-slate-800'
+            }`}
+            title="ดูบันทึกการต่อสู้และทอยเต๋าย้อนหลัง"
+          >
+            <ScrollText className="w-3.5 h-3.5" /> บันทึก
+          </button>
+          <button
             onClick={() => setShowLeft((v) => !v)}
             className={`p-1.5 rounded-lg border text-xs transition ${showLeft ? 'bg-slate-800 border-slate-700 text-white' : 'border-transparent text-slate-400 hover:bg-slate-800'}`}
             title="ซ่อน/แสดงแถบปาร์ตี้"
@@ -263,7 +300,7 @@ export function App() {
           <button
             onClick={() => setShowRight((v) => !v)}
             className={`p-1.5 rounded-lg border text-xs transition ${showRight ? 'bg-slate-800 border-slate-700 text-white' : 'border-transparent text-slate-400 hover:bg-slate-800'}`}
-            title="ซ่อน/แสดงแชทและเต๋า"
+            title="ซ่อน/แสดงตัวละครและเต๋า"
           >
             <PanelRight className="w-4 h-4" />
           </button>
@@ -292,6 +329,63 @@ export function App() {
         </div>
       )}
 
+      {/* Collapsible Combat Log Drawer */}
+      {showLog && (
+        <div className="fixed top-14 right-4 z-40 w-80 max-h-[65vh] bg-slate-900/95 backdrop-blur-xl border border-slate-700/80 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+          <div className="px-3 py-2.5 border-b border-slate-800 flex items-center justify-between">
+            <span className="font-bold text-xs text-white flex items-center gap-1.5">
+              <ScrollText className="w-3.5 h-3.5 text-indigo-400" /> บันทึกการต่อสู้ & ทอยเต๋า
+            </span>
+            <button onClick={() => setShowLog(false)} className="text-slate-400 hover:text-white">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto custom-scroll p-2.5 space-y-2 text-xs">
+            {(roomState.logs || []).map((lg: any) => (
+              <div key={lg.id} className="p-2 rounded-xl bg-slate-950/80 border border-slate-800/80 space-y-1">
+                <div className="flex items-center justify-between text-[10px] text-slate-400">
+                  <span className="font-bold text-slate-200">{lg.who}</span>
+                  <span>{lg.time}</span>
+                </div>
+                {lg.type === 'dice' && (
+                  <div className="text-slate-200">
+                    🎲 {lg.label}: <span className="font-mono font-bold text-indigo-300">{lg.total}</span>{' '}
+                    <span className="text-[10px] text-slate-400">({lg.detail}{lg.mod ? `${lg.mod >= 0 ? `+${lg.mod}` : lg.mod}` : ''})</span>
+                    {lg.isCrit && <span className="ml-1 text-amber-300 font-bold">CRIT!</span>}
+                    {lg.isFumble && <span className="ml-1 text-rose-400 font-bold">FUMBLE!</span>}
+                  </div>
+                )}
+                {lg.type === 'skill' && (
+                  <div className="space-y-0.5">
+                    <div className="font-bold text-indigo-300">
+                      {lg.skillIcon} {lg.skillName}
+                      {lg.targetName && <span className="text-slate-300 font-normal"> → {lg.targetName}</span>}
+                    </div>
+                    {lg.hit && (
+                      <div className="text-[11px] text-slate-300">
+                        Hit: <span className="font-mono font-bold text-white">{lg.hit.total}</span>
+                        {lg.hitOutcome === 'hit' && <span className="ml-1.5 text-emerald-400 font-bold">🎯 โดน!</span>}
+                        {lg.hitOutcome === 'miss' && <span className="ml-1.5 text-slate-400 font-bold">💨 พลาด (AC {lg.targetAc})</span>}
+                      </div>
+                    )}
+                    {lg.effect && (
+                      <div className="text-[11px] text-slate-300">
+                        {lg.effectLabel}: <span className="font-mono font-bold text-amber-300">{lg.effect.total}</span>
+                        {lg.hpDelta < 0 && <span className="ml-1.5 text-rose-400 font-bold">({lg.hpDelta} HP)</span>}
+                        {lg.hpDelta > 0 && <span className="ml-1.5 text-emerald-400 font-bold">(+{lg.hpDelta} HP)</span>}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {lg.type !== 'dice' && lg.type !== 'skill' && (
+                  <div className="text-slate-300">{lg.text}</div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Animated Dice Roll Overlay */}
       <DiceRollOverlay latestLog={roomState.logs?.[0]} />
 
@@ -308,6 +402,7 @@ export function App() {
             onRollInit={() => dispatchAction({ type: 'roll_initiative' })}
             onNextTurn={() => dispatchAction({ type: 'next_turn' })}
             onRemoveEntity={(charId) => dispatchAction({ type: 'remove_entity', payload: { charId } })}
+            onToggleHidden={(charId) => dispatchAction({ type: 'toggle_token_hidden', payload: { charId } })}
           />
         )}
 
@@ -315,6 +410,10 @@ export function App() {
         <div className="flex-1 flex flex-col min-w-0 relative">
           <BattlemapCanvas
             act={roomState.act}
+            customMapUrl={roomState.customMapUrl}
+            customMapName={roomState.customMapName}
+            fog={roomState.fog || []}
+            isDM={isDM}
             tokens={roomState.tokens}
             pings={pings}
             selectedCharId={selectedCharId}
@@ -325,13 +424,15 @@ export function App() {
               }
             }}
             onPingMap={emitPing}
+            onToggleFog={(cells, mode) => dispatchAction({ type: 'toggle_fog', payload: { cells, mode } })}
+            onSetAllFog={(enabled) => dispatchAction({ type: 'set_all_fog', payload: { enabled } })}
           />
 
           <SkillHotbar
             character={activeChar}
             party={roomState.party}
-            onCastSkill={(charId, skill: SkillDef, targetName, mode) =>
-              dispatchAction({ type: 'cast_skill', payload: { charId, skill, targetName, mode } })
+            onCastSkill={(charId, skill: SkillDef, targetName, targetId, mode) =>
+              dispatchAction({ type: 'cast_skill', payload: { charId, skill, targetName, targetId, mode } })
             }
             onUpdateHp={(charId, delta) => dispatchAction({ type: 'update_hp', payload: { charId, delta } })}
             onUpdateResource={(charId, delta) => dispatchAction({ type: 'update_resource', payload: { charId, delta } })}
@@ -347,6 +448,7 @@ export function App() {
                 : roomState.party.find((c: any) => c.id === session.myCharId) || activeChar
             }
             act={roomState.act}
+            customMapName={roomState.customMapName}
             isDM={isDM}
             onRollDice={(sides, mod, mode, label) =>
               dispatchAction({ type: 'roll_dice', payload: { sides, mod, mode, label, rollerName: session.playerName } })
@@ -354,10 +456,27 @@ export function App() {
             onUpdateEquipment={(charId, equipment) =>
               dispatchAction({ type: 'update_equipment', payload: { charId, equipment } })
             }
+            onEditStats={(charId, patch) =>
+              dispatchAction({ type: 'edit_character_stats', payload: { charId, ...patch } })
+            }
+            onToggleCondition={(charId, condition) =>
+              dispatchAction({ type: 'toggle_condition', payload: { charId, condition } })
+            }
+            onSetTokenSize={(charId, size) =>
+              dispatchAction({ type: 'set_token_size', payload: { charId, size } })
+            }
+            onGrantSp={(charId, amount) =>
+              dispatchAction({ type: 'grant_sp', payload: { charId, amount } })
+            }
             onSetAct={(act) => dispatchAction({ type: 'set_act', payload: act })}
+            onSetCustomMap={(mapUrl, mapName) =>
+              dispatchAction({ type: 'set_custom_map', payload: { mapUrl, mapName } })
+            }
             onSpawnEnemies={() => dispatchAction({ type: 'spawn_enemies' })}
             onSpawnCustom={(entity) => dispatchAction({ type: 'spawn_custom_entity', payload: entity })}
             onResetRoom={() => dispatchAction({ type: 'reset_room' })}
+            onExportRoom={handleExportRoom}
+            onImportRoom={(state) => dispatchAction({ type: 'import_room', payload: { state } })}
           />
         )}
       </div>

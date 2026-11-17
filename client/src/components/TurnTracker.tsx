@@ -11,7 +11,17 @@ interface TurnTrackerProps {
   onRollInit: () => void;
   onNextTurn: () => void;
   onRemoveEntity: (id: string) => void;
+  onToggleHidden?: (id: string) => void;
 }
+
+const CONDITION_EMOJI: Record<string, string> = {
+  Poisoned: '🤢',
+  Stunned: '💫',
+  Prone: '⬇️',
+  Burn: '🔥',
+  Frozen: '❄️',
+  Buffed: '🛡️'
+};
 
 export const TurnTracker: React.FC<TurnTrackerProps> = ({
   party,
@@ -22,9 +32,11 @@ export const TurnTracker: React.FC<TurnTrackerProps> = ({
   onSelectChar,
   onRollInit,
   onNextTurn,
-  onRemoveEntity
+  onRemoveEntity,
+  onToggleHidden
 }) => {
-  const sorted = [...party].sort((a, b) => (b.init || 0) - (a.init || 0));
+  const visibleParty = isDM ? party : party.filter((m) => !m.hidden);
+  const sorted = [...visibleParty].sort((a, b) => (b.init || 0) - (a.init || 0));
   const activeId = sorted[turnIndex % Math.max(1, sorted.length)]?.id;
   const onlineList = Object.values(players || {});
 
@@ -68,6 +80,8 @@ export const TurnTracker: React.FC<TurnTrackerProps> = ({
               key={c.id}
               onClick={() => onSelectChar(c.id)}
               className={`w-full text-left p-2 rounded-xl border transition cursor-pointer ${
+                c.hidden ? 'opacity-60 border-dashed ' : ''
+              }${
                 isSel
                   ? 'border-indigo-500/80 bg-indigo-950/30'
                   : isTurn
@@ -90,10 +104,19 @@ export const TurnTracker: React.FC<TurnTrackerProps> = ({
                   <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded font-bold ${isTurn ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-400'}`}>
                     {c.init || 0}
                   </span>
+                  {isDM && onToggleHidden && (
+                    <span
+                      onClick={(e) => { e.stopPropagation(); onToggleHidden(c.id); }}
+                      className="text-[10px] text-slate-400 hover:text-amber-300 px-0.5"
+                      title={c.hidden ? 'แสดงให้ผู้เล่นเห็น' : 'ซ่อนจากผู้เล่น'}
+                    >
+                      {c.hidden ? '🙈' : '👁️'}
+                    </span>
+                  )}
                   {isDM && (
                     <span
                       onClick={(e) => { e.stopPropagation(); onRemoveEntity(c.id); }}
-                      className="text-[10px] text-slate-500 hover:text-rose-400 px-1"
+                      className="text-[10px] text-slate-500 hover:text-rose-400 px-0.5"
                       title="ลบออกจากกระดาน"
                     >
                       ✕
@@ -113,6 +136,16 @@ export const TurnTracker: React.FC<TurnTrackerProps> = ({
                   {c.hp}/{c.maxHp}
                 </span>
               </div>
+
+              {c.conditions && c.conditions.length > 0 && (
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {c.conditions.map((cond: string) => (
+                    <span key={cond} className="text-[9px] px-1.5 py-0.25 rounded bg-slate-900 border border-slate-700 text-slate-300">
+                      {CONDITION_EMOJI[cond] || '⚡'} {cond}
+                    </span>
+                  ))}
+                </div>
+              )}
             </button>
           );
         })}

@@ -16,6 +16,14 @@ export const Lobby: React.FC<LobbyProps> = ({ initialRoom, onJoin }) => {
   const [playerName, setPlayerName] = useState('');
   const [role, setRole] = useState<'player' | 'dm'>(hasUrlRoom ? 'player' : 'dm');
   const [mode, setMode] = useState<'create' | 'spectate'>('create');
+  const [savedChars, setSavedChars] = useState<any[]>(() => {
+    try {
+      const raw = localStorage.getItem('aethelgard_saved_chars');
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
 
   // Character builder state
   const [charName, setCharName] = useState('อาเธอร์ (Arthur)');
@@ -95,7 +103,7 @@ export const Lobby: React.FC<LobbyProps> = ({ initialRoom, onJoin }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const pName = playerName.trim() || (role === 'dm' ? 'Dungeon Master' : 'นักผจญภัย');
-    let character = null;
+    let character: any = null;
 
     if (role === 'player' && mode === 'create') {
       character = {
@@ -135,6 +143,13 @@ export const Lobby: React.FC<LobbyProps> = ({ initialRoom, onJoin }) => {
           ]
         }
       };
+      try {
+        const nextSaved = [character, ...savedChars.filter((c) => c.name !== character.name)].slice(0, 5);
+        localStorage.setItem('aethelgard_saved_chars', JSON.stringify(nextSaved));
+        setSavedChars(nextSaved);
+      } catch {
+        // ignore storage quota errors
+      }
     }
 
     onJoin({ roomId: roomId.trim() || 'AETHEL', playerName: pName, role, character });
@@ -233,6 +248,42 @@ export const Lobby: React.FC<LobbyProps> = ({ initialRoom, onJoin }) => {
           >
             🚀 เข้าสู่โต๊ะผจญภัย
           </button>
+
+          {role === 'player' && savedChars.length > 0 && (
+            <div className="pt-3 border-t border-slate-800 space-y-2">
+              <div className="text-[11px] font-bold text-slate-400">💾 ตัวละครที่เซฟไว้ (คลิกเพื่อเข้าเล่นต่อ)</div>
+              <div className="space-y-1.5 max-h-36 overflow-y-auto custom-scroll">
+                {savedChars.map((sc) => (
+                  <button
+                    key={sc.id}
+                    type="button"
+                    onClick={() =>
+                      onJoin({
+                        roomId: roomId.trim() || 'AETHEL',
+                        playerName: playerName.trim() || sc.player || sc.name,
+                        role: 'player',
+                        character: sc
+                      })
+                    }
+                    className="w-full flex items-center justify-between gap-2 p-2 rounded-xl bg-slate-950 border border-slate-800 hover:border-emerald-500/70 text-left transition cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      {sc.avatarUrl ? (
+                        <img src={sc.avatarUrl} alt={sc.name} className="w-7 h-7 rounded-full object-cover border border-white/50 shrink-0" />
+                      ) : (
+                        <span className="text-base shrink-0">{sc.icon || '🧙'}</span>
+                      )}
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-slate-100 truncate">{sc.name}</div>
+                        <div className="text-[10px] text-slate-400 truncate">{sc.className}</div>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-bold text-emerald-400 shrink-0">เข้าเล่น →</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </form>
 
         {/* Right: Character Creator */}

@@ -5,7 +5,7 @@ import { Heart, Zap, Target, Sparkles, X, ArrowUpCircle } from 'lucide-react';
 interface SkillHotbarProps {
   character: any;
   party: any[];
-  onCastSkill: (charId: string, skill: SkillDef, targetName: string | null, mode: string) => void;
+  onCastSkill: (charId: string, skill: SkillDef, targetName: string | null, targetId: string | null, mode: string) => void;
   onUpdateHp: (charId: string, delta: number) => void;
   onUpdateResource: (charId: string, delta: number) => void;
   onUpgradeSkill: (charId: string, skillId: string) => void;
@@ -27,7 +27,7 @@ export const SkillHotbar: React.FC<SkillHotbarProps> = ({
   onUpgradeSkill
 }) => {
   const [openMenu, setOpenMenu] = useState(false);
-  const [targetName, setTargetName] = useState<string>('');
+  const [targetId, setTargetId] = useState<string>('');
   const [mode, setMode] = useState<string>('normal');
 
   if (!character) return null;
@@ -36,6 +36,7 @@ export const SkillHotbar: React.FC<SkillHotbarProps> = ({
   const raceDef = RACES.find((r) => r.id === character.raceId) || RACES[1];
   const allSkills: SkillDef[] = [...clsDef.skills, raceDef.racialSkill];
   const sp = character.skillPoints || 0;
+  const selectedTarget = party.find((p) => p.id === targetId) || null;
 
   return (
     <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-2 max-w-[95%]">
@@ -63,13 +64,15 @@ export const SkillHotbar: React.FC<SkillHotbarProps> = ({
             <div className="flex-1 flex items-center gap-1.5 bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5">
               <Target className="w-3.5 h-3.5 text-amber-400 shrink-0" />
               <select
-                value={targetName}
-                onChange={(e) => setTargetName(e.target.value)}
+                value={targetId}
+                onChange={(e) => setTargetId(e.target.value)}
                 className="bg-transparent text-slate-200 focus:outline-none w-full"
               >
                 <option value="" className="bg-slate-900">ไม่ระบุเป้าหมาย</option>
-                {party.filter((p) => p.id !== character.id).map((p) => (
-                  <option key={p.id} value={p.name} className="bg-slate-900">{p.name}</option>
+                {party.filter((p) => !p.hidden).map((p) => (
+                  <option key={p.id} value={p.id} className="bg-slate-900">
+                    {p.name} (HP {p.hp}/{p.maxHp}, AC {p.ac || 12})
+                  </option>
                 ))}
               </select>
             </div>
@@ -108,7 +111,7 @@ export const SkillHotbar: React.FC<SkillHotbarProps> = ({
                   <button
                     disabled={noResource}
                     onClick={() => {
-                      onCastSkill(character.id, sk, targetName || null, mode);
+                      onCastSkill(character.id, sk, selectedTarget?.name || null, selectedTarget?.id || null, mode);
                       setOpenMenu(false);
                     }}
                     className="flex-1 text-left cursor-pointer disabled:cursor-not-allowed"

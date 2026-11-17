@@ -18,6 +18,9 @@ export function createInitialRoomState(roomId: string) {
   return {
     roomId,
     act: 1 as string | number,
+    customMapUrl: null as string | null,
+    customMapName: null as string | null,
+    fog: [] as string[],
     turnIndex: 0,
     party: [] as any[],
     tokens: [] as any[],
@@ -132,7 +135,7 @@ export function applyRoomAction(prevRoom: any, action: { type: string; payload?:
     }
 
     case 'cast_skill': {
-      const { charId, skill, targetName, mode } = payload;
+      const { charId, skill, targetName, targetId, mode } = payload;
       const caster = room.party.find((m: any) => m.id === charId);
       const casterName = caster ? caster.name : 'นักผจญภัย';
       const skillLv = caster?.skillLevels?.[skill.id] || 1;
@@ -172,6 +175,40 @@ export function applyRoomAction(prevRoom: any, action: { type: string; payload?:
         }
       }
 
+      // Target resolution & auto HP calculation
+      const target = targetId
+        ? room.party.find((m: any) => m.id === targetId)
+        : targetName
+        ? room.party.find((m: any) => m.name === targetName)
+        : null;
+
+      let hitOutcome: 'hit' | 'miss' | null = null;
+      let hpDelta = 0;
+
+      if (target) {
+        if (skill.type === 'Heal' && effectResult) {
+          const healAmt = Math.max(0, effectResult.total);
+          target.hp = Math.min(target.maxHp, target.hp + healAmt);
+          hpDelta = healAmt;
+        } else if (skill.type === 'Attack' || hitResult) {
+          const targetAc = target.ac || 10;
+          if (hitResult) {
+            const isHit = hitResult.isCrit || (!hitResult.isFumble && hitResult.total >= targetAc);
+            hitOutcome = isHit ? 'hit' : 'miss';
+            if (isHit && effectResult) {
+              const dmg = Math.max(0, effectResult.total);
+              target.hp = Math.max(0, target.hp - dmg);
+              hpDelta = -dmg;
+            }
+          } else if (effectResult) {
+            hitOutcome = 'hit';
+            const dmg = Math.max(0, effectResult.total);
+            target.hp = Math.max(0, target.hp - dmg);
+            hpDelta = -dmg;
+          }
+        }
+      }
+
       pushLog(room, {
         type: 'skill',
         who: casterName,
@@ -180,7 +217,10 @@ export function applyRoomAction(prevRoom: any, action: { type: string; payload?:
         skillName: `${skill.name} (Lv.${skillLv})`,
         skillIcon: skill.icon || '✨',
         skillType: skill.type || 'Attack',
-        targetName: targetName || null,
+        targetName: target?.name || targetName || null,
+        targetAc: target?.ac || null,
+        hitOutcome,
+        hpDelta,
         cost: skill.cost,
         resName: caster?.resName || 'Mana',
         hit: hitResult,
@@ -266,10 +306,11 @@ export function applyRoomAction(prevRoom: any, action: { type: string; payload?:
     }
 
     case 'spawn_custom_entity': {
-      const { name, kind, hp, ac, init, icon, avatarUrl } = payload;
+      const { name, kind, hp, ac, init, icon, avatarUrl, size, hidden } = payload;
       const isEnemy = kind !== 'npc';
       const id = (isEnemy ? 'en_' : 'npc_') + Date.now() + '_' + Math.random().toString(36).slice(2, 5);
       const maxHp = Math.max(1, Number(hp) || 10);
+      const tokenSize = size === 2 || size === 3 ? size : 1;
       const entity = {
         id,
         name: name || (isEnemy ? 'มอนสเตอร์' : 'NPC'),
@@ -285,7 +326,10 @@ export function applyRoomAction(prevRoom: any, action: { type: string; payload?:
         icon: icon || (isEnemy ? '👺' : '🧑'),
         avatarUrl: avatarUrl || null,
         color: isEnemy ? '#e11d48' : '#eab308',
-        isEnemy
+        isEnemy,
+        hidden: Boolean(hidden),
+        size: tokenSize,
+        conditions: [] as string[]
       };
       room.party.push(entity);
       room.tokens.push({
@@ -296,12 +340,15 @@ export function applyRoomAction(prevRoom: any, action: { type: string; payload?:
         color: entity.color,
         x: isEnemy ? 10 : 7,
         y: 4,
-        type: isEnemy ? 'enemy' : 'npc'
+        type: isEnemy ? 'enemy' : 'npc',
+        size: tokenSize,
+        hidden: Boolean(hidden),
+        conditions: []
       });
       pushLog(room, {
         type: 'system',
         who: 'DM',
-        text: `${isEnemy ? '⚠️ เสกมอนสเตอร์:' : '🧑 เสก NPC:'} ${entity.name} (HP ${maxHp}, AC ${entity.ac})`
+        text: `${isEnemy ? '⚠️ เสกมอนสเตอร์:' : '🧑 เสก NPC:'} ${entity.name} (HP ${maxHp}, AC ${entity.ac}${hidden ? ', ซ่อนตัว' : ''})`
       });
       return { room };
     }
@@ -320,6 +367,132 @@ export function applyRoomAction(prevRoom: any, action: { type: string; payload?:
         c.equipment = equipment;
       }
       return { room };
+    }
+
+    case 'toggle_fog': {
+      const { cells, mode } = payload as { cells: string[]; mode: 'add' | 'remove' | 'toggle' };
+      const fogSet = new Set<string>(room.fog || []);
+      for (const cell of cells || []) {
+        if (mode === 'add') fogSet.add(cell);
+        else if (mode === 'remove') fogSet.delete(cell);
+        else {
+          if (fogSet.has(cell)) fogSet.delete(cell);
+          else fogSet.add(cell);
+        }
+      }
+      room.fog = Array.from(fogSet);
+      return { room };
+    }
+
+    case 'set_all_fog': {
+      const { enabled } = payload;
+      if (!enabled) {
+        room.fog = [];
+      } else {
+        const all: string[] = [];
+        for (let y = 0; y < 9; y++) {
+          for (let x = 0; x < 16; x++) {
+            all.push(`${x}-${y}`);
+          }
+        }
+        room.fog = all;
+      }
+      return { room };
+    }
+
+    case 'set_custom_map': {
+      const { mapUrl, mapName } = payload;
+      room.customMapUrl = mapUrl;
+      room.customMapName = mapName || 'Custom Map';
+      room.act = 'custom';
+      pushLog(room, {
+        type: 'system',
+        who: 'SCENE',
+        text: `🗺️ DM เปลี่ยนแผนที่เป็น: ${room.customMapName}`
+      });
+      return { room };
+    }
+
+    case 'toggle_token_hidden': {
+      const { charId } = payload;
+      const c = room.party.find((m: any) => m.id === charId);
+      const t = room.tokens.find((tok: any) => tok.id === charId);
+      const nextHidden = !(c?.hidden || t?.hidden);
+      if (c) c.hidden = nextHidden;
+      if (t) t.hidden = nextHidden;
+      return { room };
+    }
+
+    case 'set_token_size': {
+      const { charId, size } = payload;
+      const s = size === 2 || size === 3 ? size : 1;
+      const c = room.party.find((m: any) => m.id === charId);
+      const t = room.tokens.find((tok: any) => tok.id === charId);
+      if (c) c.size = s;
+      if (t) t.size = s;
+      return { room };
+    }
+
+    case 'toggle_condition': {
+      const { charId, condition } = payload;
+      const c = room.party.find((m: any) => m.id === charId);
+      const t = room.tokens.find((tok: any) => tok.id === charId);
+      const cur: string[] = c?.conditions || t?.conditions || [];
+      const exists = cur.includes(condition);
+      const next = exists ? cur.filter((x) => x !== condition) : [...cur, condition];
+      if (c) c.conditions = next;
+      if (t) t.conditions = next;
+      return { room };
+    }
+
+    case 'edit_character_stats': {
+      const { charId, name, ac, maxHp, hp, stats } = payload;
+      const c = room.party.find((m: any) => m.id === charId);
+      const t = room.tokens.find((tok: any) => tok.id === charId);
+      if (c) {
+        if (typeof name === 'string' && name.trim()) {
+          c.name = name.trim();
+          if (t) t.label = c.name.slice(0, 6);
+        }
+        if (typeof ac === 'number' && !Number.isNaN(ac)) c.ac = Math.max(1, ac);
+        if (typeof maxHp === 'number' && !Number.isNaN(maxHp)) {
+          c.maxHp = Math.max(1, maxHp);
+          c.hp = Math.min(c.hp, c.maxHp);
+        }
+        if (typeof hp === 'number' && !Number.isNaN(hp)) {
+          c.hp = Math.max(0, Math.min(c.maxHp, hp));
+        }
+        if (Array.isArray(stats) && stats.length === 6) {
+          c.stats = stats.map((v) => Math.max(1, Math.min(30, Number(v) || 10)));
+        }
+      }
+      return { room };
+    }
+
+    case 'grant_sp': {
+      const { charId, amount } = payload;
+      const amt = Number(amount) || 1;
+      if (charId === 'ALL') {
+        room.party.forEach((m: any) => {
+          if (!m.isEnemy) m.skillPoints = Math.max(0, (m.skillPoints || 0) + amt);
+        });
+        pushLog(room, { type: 'system', who: 'DM', text: `⬆️ DM แจก +${amt} Skill Point ให้ผู้เล่นทุกคน!` });
+      } else {
+        const c = room.party.find((m: any) => m.id === charId);
+        if (c) {
+          c.skillPoints = Math.max(0, (c.skillPoints || 0) + amt);
+          pushLog(room, { type: 'system', who: 'DM', text: `⬆️ ${c.name} ได้รับ +${amt} Skill Point` });
+        }
+      }
+      return { room };
+    }
+
+    case 'import_room': {
+      const { state } = payload;
+      if (state && Array.isArray(state.party) && Array.isArray(state.tokens)) {
+        return { room: { ...createInitialRoomState(room.roomId), ...state, roomId: room.roomId } };
+      }
+      return { room: prevRoom, error: 'ไฟล์ห้องไม่ถูกต้อง' };
     }
 
     case 'chat_message': {

@@ -1,22 +1,38 @@
 import React, { useState } from 'react';
 import { ACTS } from '../data/aethelgard';
-import { Dices, Crown, PlusCircle, Backpack, Plus, X, User, Upload } from 'lucide-react';
+import { Dices, Crown, PlusCircle, Backpack, Plus, X, User, Upload, Edit3, Download, Map } from 'lucide-react';
 
 interface CharacterAndDiceProps {
   character: any;
   act: string | number;
+  customMapName?: string | null;
   isDM: boolean;
   onRollDice: (sides: number, mod: number, mode: string, label?: string) => void;
   onUpdateEquipment: (charId: string, equipment: any) => void;
+  onEditStats: (charId: string, patch: { ac?: number; maxHp?: number; hp?: number; stats?: number[] }) => void;
+  onToggleCondition: (charId: string, condition: string) => void;
+  onSetTokenSize: (charId: string, size: 1 | 2 | 3) => void;
+  onGrantSp: (charId: string | 'ALL', amount: number) => void;
   onSetAct: (act: string | number) => void;
+  onSetCustomMap: (mapUrl: string, mapName: string) => void;
   onSpawnEnemies: () => void;
-  onSpawnCustom: (entity: { name: string; kind: 'enemy' | 'npc'; hp: number; ac: number; init: number; icon: string; avatarUrl?: string | null }) => void;
+  onSpawnCustom: (entity: { name: string; kind: 'enemy' | 'npc'; hp: number; ac: number; init: number; icon: string; avatarUrl?: string | null; size?: 1 | 2 | 3; hidden?: boolean }) => void;
   onResetRoom: () => void;
+  onExportRoom: () => void;
+  onImportRoom: (state: any) => void;
 }
 
 const ENTITY_ICONS = ['👺', '🐺', '🐉', '🦇', '💀', '🧙', '🧝', '🍺', '👑', '🛡️'];
 const STAT_LABELS = ['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA'];
 const ITEM_ICONS = ['🧪', '🍖', '⚔️', '🛡️', '💍', '🗝️', '📜', '💎', '🔥', '🎒'];
+const CONDITIONS = [
+  { id: 'Poisoned', label: 'พิษ', emoji: '🤢' },
+  { id: 'Stunned', label: 'มึนงง', emoji: '💫' },
+  { id: 'Prone', label: 'ล้ม', emoji: '⬇️' },
+  { id: 'Burn', label: 'ไฟไหม้', emoji: '🔥' },
+  { id: 'Frozen', label: 'แช่แข็ง', emoji: '❄️' },
+  { id: 'Buffed', label: 'บัฟ', emoji: '🛡️' }
+];
 const EQUIP_SLOTS = [
   { key: 'head' as const, label: 'หมวก/ศีรษะ', emoji: '🪖' },
   { key: 'weapon' as const, label: 'อาวุธหลัก', emoji: '⚔️' },
@@ -32,16 +48,31 @@ const BAG_CAPACITY = 12;
 export const CharacterAndDice: React.FC<CharacterAndDiceProps> = ({
   character,
   act,
+  customMapName,
   isDM,
   onRollDice,
   onUpdateEquipment,
+  onEditStats,
+  onToggleCondition,
+  onSetTokenSize,
+  onGrantSp,
   onSetAct,
+  onSetCustomMap,
   onSpawnEnemies,
   onSpawnCustom,
-  onResetRoom
+  onResetRoom,
+  onExportRoom,
+  onImportRoom
 }) => {
   const [tab, setTab] = useState<'sheet' | 'dm'>(isDM ? 'dm' : 'sheet');
   const [mod, setMod] = useState(0);
+
+  // Edit stats state
+  const [editingStats, setEditingStats] = useState(false);
+  const [editHp, setEditHp] = useState(10);
+  const [editMaxHp, setEditMaxHp] = useState(10);
+  const [editAc, setEditAc] = useState(12);
+  const [editStatArr, setEditStatArr] = useState<number[]>([10, 10, 10, 10, 10, 10]);
 
   // Equipment & Bag Slot UI state
   const [editingSlot, setEditingSlot] = useState<EquipSlotKey | null>(null);
@@ -59,6 +90,8 @@ export const CharacterAndDice: React.FC<CharacterAndDiceProps> = ({
   const [spInit, setSpInit] = useState(12);
   const [spIcon, setSpIcon] = useState('👺');
   const [spAvatarUrl, setSpAvatarUrl] = useState<string | null>(null);
+  const [spSize, setSpSize] = useState<1 | 2 | 3>(1);
+  const [spHidden, setSpHidden] = useState(false);
 
   const activeTab = isDM ? tab : 'sheet';
 
@@ -165,6 +198,44 @@ export const CharacterAndDice: React.FC<CharacterAndDiceProps> = ({
     reader.readAsDataURL(file);
   };
 
+  const handleCustomMapUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const maxW = 1280;
+        const maxH = 720;
+        const ratio = Math.min(maxW / img.width, maxH / img.height, 1);
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * ratio);
+        canvas.height = Math.round(img.height * ratio);
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        onSetCustomMap(canvas.toDataURL('image/jpeg', 0.75), file.name.replace(/\.[^.]+$/, ''));
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(reader.result as string);
+        onImportRoom(parsed);
+      } catch {
+        // invalid JSON ignored
+      }
+    };
+    reader.readAsText(file);
+  };
+
   const handleSpawnCustom = (e: React.FormEvent) => {
     e.preventDefault();
     onSpawnCustom({
@@ -174,10 +245,14 @@ export const CharacterAndDice: React.FC<CharacterAndDiceProps> = ({
       ac: spAc,
       init: spInit,
       icon: spIcon,
-      avatarUrl: spAvatarUrl
+      avatarUrl: spAvatarUrl,
+      size: spSize,
+      hidden: spHidden
     });
     setSpName('');
     setSpAvatarUrl(null);
+    setSpSize(1);
+    setSpHidden(false);
   };
 
   return (
@@ -260,18 +335,134 @@ export const CharacterAndDice: React.FC<CharacterAndDiceProps> = ({
               </div>
 
               {/* Core Combat Stats */}
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="p-2 rounded-xl bg-slate-950 border border-slate-800">
-                  <div className="text-[10px] text-slate-400">HP</div>
-                  <div className="font-mono font-black text-sm text-emerald-400">{character.hp}/{character.maxHp}</div>
+              <div className="space-y-1.5">
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="p-2 rounded-xl bg-slate-950 border border-slate-800">
+                    <div className="text-[10px] text-slate-400">HP</div>
+                    <div className="font-mono font-black text-sm text-emerald-400">{character.hp}/{character.maxHp}</div>
+                  </div>
+                  <div className="p-2 rounded-xl bg-slate-950 border border-slate-800">
+                    <div className="text-[10px] text-slate-400">เกราะ (AC)</div>
+                    <div className="font-mono font-black text-sm text-white">{character.ac || 12}</div>
+                  </div>
+                  <div className="p-2 rounded-xl bg-slate-950 border border-slate-800">
+                    <div className="text-[10px] text-slate-400">{character.resName || 'Mana'}</div>
+                    <div className="font-mono font-black text-sm text-sky-400">{character.mp ?? 0}/{character.maxMp ?? 0}</div>
+                  </div>
                 </div>
-                <div className="p-2 rounded-xl bg-slate-950 border border-slate-800">
-                  <div className="text-[10px] text-slate-400">เกราะ (AC)</div>
-                  <div className="font-mono font-black text-sm text-white">{character.ac || 12}</div>
+
+                <div className="flex items-center justify-between gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!editingStats) {
+                        setEditHp(character.hp ?? 10);
+                        setEditMaxHp(character.maxHp ?? 10);
+                        setEditAc(character.ac ?? 12);
+                        setEditStatArr(character.stats ? [...character.stats] : [10, 10, 10, 10, 10, 10]);
+                      }
+                      setEditingStats((v) => !v);
+                    }}
+                    className="flex-1 py-1 rounded-lg bg-slate-950 border border-slate-800 hover:border-indigo-500 text-[11px] font-semibold text-slate-300 flex items-center justify-center gap-1 transition"
+                  >
+                    <Edit3 className="w-3 h-3 text-indigo-400" /> {editingStats ? 'ปิดการแก้ไข' : 'แก้ HP / AC / ค่าพลัง'}
+                  </button>
+                  {isDM && (
+                    <div className="flex items-center gap-0.5 bg-slate-950 border border-slate-800 rounded-lg p-0.5 text-[10px]">
+                      {([1, 2, 3] as const).map((sz) => (
+                        <button
+                          key={sz}
+                          type="button"
+                          onClick={() => onSetTokenSize(character.id, sz)}
+                          className={`px-1.5 py-0.5 rounded font-mono font-bold ${
+                            (character.size || 1) === sz ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'
+                          }`}
+                          title={`ขนาด Token ${sz}x${sz}`}
+                        >
+                          {sz}x{sz}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <div className="p-2 rounded-xl bg-slate-950 border border-slate-800">
-                  <div className="text-[10px] text-slate-400">{character.resName || 'Mana'}</div>
-                  <div className="font-mono font-black text-sm text-sky-400">{character.mp ?? 0}/{character.maxMp ?? 0}</div>
+
+                {editingStats && (
+                  <div className="p-2.5 rounded-xl bg-slate-950 border border-indigo-500/60 space-y-2">
+                    <div className="grid grid-cols-3 gap-1.5 text-center">
+                      <div className="bg-slate-900 border border-slate-800 rounded-lg p-1">
+                        <div className="text-[10px] text-slate-400">HP</div>
+                        <input type="number" min={0} value={editHp} onChange={(e) => setEditHp(Number(e.target.value))} className="w-full text-center bg-transparent font-mono font-bold" />
+                      </div>
+                      <div className="bg-slate-900 border border-slate-800 rounded-lg p-1">
+                        <div className="text-[10px] text-slate-400">MaxHP</div>
+                        <input type="number" min={1} value={editMaxHp} onChange={(e) => setEditMaxHp(Number(e.target.value))} className="w-full text-center bg-transparent font-mono font-bold" />
+                      </div>
+                      <div className="bg-slate-900 border border-slate-800 rounded-lg p-1">
+                        <div className="text-[10px] text-slate-400">AC</div>
+                        <input type="number" min={1} value={editAc} onChange={(e) => setEditAc(Number(e.target.value))} className="w-full text-center bg-transparent font-mono font-bold" />
+                      </div>
+                    </div>
+                    {character.stats && (
+                      <div className="grid grid-cols-3 gap-1 text-center">
+                        {STAT_LABELS.map((lb, idx) => (
+                          <div key={lb} className="bg-slate-900 border border-slate-800 rounded-lg p-1">
+                            <div className="text-[9px] text-slate-400">{lb}</div>
+                            <input
+                              type="number"
+                              min={1}
+                              max={30}
+                              value={editStatArr[idx] ?? 10}
+                              onChange={(e) => {
+                                const next = [...editStatArr];
+                                next[idx] = Number(e.target.value);
+                                setEditStatArr(next);
+                              }}
+                              className="w-full text-center bg-transparent font-mono font-bold text-xs"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onEditStats(character.id, {
+                          hp: editHp,
+                          maxHp: editMaxHp,
+                          ac: editAc,
+                          stats: character.stats ? editStatArr : undefined
+                        });
+                        setEditingStats(false);
+                      }}
+                      className="w-full py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs"
+                    >
+                      บันทึกค่าพลัง
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Status Conditions */}
+              <div className="space-y-1">
+                <div className="text-[11px] font-semibold text-slate-400">⚡ สถานะ (Conditions)</div>
+                <div className="flex flex-wrap gap-1">
+                  {CONDITIONS.map((cond) => {
+                    const active = (character.conditions || []).includes(cond.id);
+                    return (
+                      <button
+                        key={cond.id}
+                        type="button"
+                        onClick={() => onToggleCondition(character.id, cond.id)}
+                        className={`px-2 py-0.5 rounded-full border text-[10px] font-semibold transition ${
+                          active
+                            ? 'bg-amber-500/25 border-amber-400 text-amber-200'
+                            : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-600'
+                        }`}
+                      >
+                        {cond.emoji} {cond.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -628,14 +819,53 @@ export const CharacterAndDice: React.FC<CharacterAndDiceProps> = ({
               ))}
             </div>
 
+            <div className="flex items-center justify-between gap-2 pt-0.5">
+              <div className="flex items-center gap-1">
+                <span className="text-[10px] text-slate-400">ขนาด:</span>
+                {([1, 2, 3] as const).map((sz) => (
+                  <button
+                    key={sz}
+                    type="button"
+                    onClick={() => setSpSize(sz)}
+                    className={`px-1.5 py-0.5 rounded border text-[10px] font-mono font-bold ${
+                      spSize === sz ? 'bg-amber-500 border-amber-400 text-slate-950' : 'bg-slate-900 border-slate-800 text-slate-400'
+                    }`}
+                  >
+                    {sz}x{sz}
+                  </button>
+                ))}
+              </div>
+              <label className="flex items-center gap-1 text-[11px] text-slate-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={spHidden}
+                  onChange={(e) => setSpHidden(e.target.checked)}
+                  className="accent-amber-500"
+                />
+                <span>🙈 ซ่อนตัวก่อน</span>
+              </label>
+            </div>
+
             <button type="submit" className="w-full py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold">
               ✨ เสกลงกระดาน
             </button>
           </form>
 
           <div className="space-y-2">
-            <div className="font-bold text-slate-300">🗺️ เปลี่ยนฉากแผนที่ (Scenes)</div>
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-slate-300">🗺️ เปลี่ยนฉากแผนที่ (Scenes)</span>
+              <label className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 text-[10px] font-bold cursor-pointer">
+                <Map className="w-3 h-3" /> อัปโหลดแผนที่
+                <input type="file" accept="image/*" onChange={handleCustomMapUpload} className="hidden" />
+              </label>
+            </div>
             <div className="grid grid-cols-1 gap-1.5">
+              {act === 'custom' && customMapName && (
+                <div className="p-2 rounded-xl border bg-amber-600/20 border-amber-500 text-amber-200">
+                  <div className="font-bold">🖼️ {customMapName}</div>
+                  <div className="text-[10px] text-amber-300/80">แผนที่อัปโหลดเอง</div>
+                </div>
+              )}
               {[1, 2, 3, 'world'].map((a) => (
                 <button
                   key={String(a)}
@@ -653,14 +883,32 @@ export const CharacterAndDice: React.FC<CharacterAndDiceProps> = ({
 
           <div className="space-y-2 pt-2 border-t border-slate-800">
             <button
+              onClick={() => onGrantSp('ALL', 1)}
+              className="w-full py-2 rounded-lg bg-amber-600/20 border border-amber-500/40 text-amber-300 hover:bg-amber-600/30 font-bold"
+            >
+              ⬆️ แจก +1 Skill Point ให้ปาร์ตี้
+            </button>
+            <button
               onClick={onSpawnEnemies}
               className="w-full py-2 rounded-lg bg-rose-600/20 border border-rose-500/40 text-rose-300 hover:bg-rose-600/30 font-bold"
             >
               🐺 เสกชุดมอนสเตอร์ Act 3 (ด่วน)
             </button>
+            <div className="grid grid-cols-2 gap-1.5">
+              <button
+                onClick={onExportRoom}
+                className="py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold flex items-center justify-center gap-1"
+              >
+                <Download className="w-3.5 h-3.5 text-emerald-400" /> เซฟไฟล์ห้อง
+              </button>
+              <label className="py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold flex items-center justify-center gap-1 cursor-pointer">
+                <Upload className="w-3.5 h-3.5 text-sky-400" /> โหลดไฟล์ห้อง
+                <input type="file" accept=".json,application/json" onChange={handleImportFile} className="hidden" />
+              </label>
+            </div>
             <button
               onClick={onResetRoom}
-              className="w-full py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold"
+              className="w-full py-2 rounded-lg bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-400 font-semibold"
             >
               ↺ รีเซ็ตห้องใหม่ทั้งหมด
             </button>
