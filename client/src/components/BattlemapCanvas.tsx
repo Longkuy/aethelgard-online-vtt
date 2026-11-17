@@ -143,66 +143,73 @@ export const BattlemapCanvas: React.FC<BattlemapCanvasProps> = ({
 
   return (
     <div className="relative flex-1 bg-slate-950 overflow-hidden flex flex-col">
-      {/* Floating Combat Turn Banner (Top-Left) */}
+      {/* Floating Combat Turn Banner */}
       {combatTurn?.inCombat && combatTurn.currentChar && (
         <div
-          className={`absolute top-3 left-3 z-20 flex items-center gap-2 px-3 py-1.5 rounded-full backdrop-blur-md border shadow-xl text-xs ${
+          className={`absolute top-12 left-2 sm:top-3 sm:left-3 z-20 flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full backdrop-blur-md border shadow-xl text-[11px] sm:text-xs max-w-[calc(100%-1rem)] ${
             combatTurn.currentChar.id === myCharId
               ? 'bg-emerald-950/90 border-emerald-400 text-emerald-100 ring-2 ring-emerald-400/40'
               : 'bg-slate-900/90 border-amber-500/60 text-slate-100'
           }`}
         >
-          <span className="px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 font-mono font-black text-[10px]">
+          <span className="px-1.5 sm:px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 font-mono font-black text-[10px] shrink-0">
             ⚔️ R{combatTurn.round}
           </span>
-          <span className="text-slate-300">เทิร์นของ:</span>
-          <span className="flex items-center gap-1.5 font-bold text-white">
+          <span className="hidden sm:inline text-slate-300">เทิร์นของ:</span>
+          <span className="flex items-center gap-1 font-bold text-white truncate">
             {combatTurn.currentChar.avatarUrl ? (
-              <img src={combatTurn.currentChar.avatarUrl} alt={combatTurn.currentChar.name} className="w-5 h-5 rounded-full object-cover border border-white/60" />
+              <img src={combatTurn.currentChar.avatarUrl} alt={combatTurn.currentChar.name} className="w-4 h-4 sm:w-5 sm:h-5 rounded-full object-cover border border-white/60 shrink-0" />
             ) : (
               <span>{combatTurn.currentChar.icon || '🌟'}</span>
             )}
-            <span>{combatTurn.currentChar.name.split('(')[0].trim()}</span>
+            <span className="truncate">{combatTurn.currentChar.name.split('(')[0].trim()}</span>
           </span>
           {combatTurn.currentChar.id === myCharId && (
-            <span className="px-2 py-0.5 rounded-full bg-emerald-500 text-slate-950 font-black text-[10px] animate-pulse">
-              ตาคุณแล้ว!
+            <span className="px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-500 text-slate-950 font-black text-[10px] animate-pulse shrink-0">
+              ตาคุณ!
             </span>
           )}
         </div>
       )}
 
+      {/* Tap-to-move hint (great for mobile touch) */}
+      {activeTokenId && tool === 'move' && (
+        <div className="absolute bottom-20 sm:bottom-22 left-1/2 -translate-x-1/2 z-20 px-3 py-1 rounded-full bg-amber-500/95 text-slate-950 text-[11px] font-bold shadow-lg pointer-events-none whitespace-nowrap">
+          👆 แตะช่องบนแผนที่เพื่อเดิน
+        </div>
+      )}
+
       {/* Floating Map Controls (Top-Right) */}
-      <div className="absolute top-3 right-3 z-20 flex flex-wrap items-center gap-1 bg-slate-900/90 backdrop-blur-md border border-slate-700/60 rounded-full px-2.5 py-1 shadow-xl text-xs">
+      <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-20 flex flex-wrap items-center gap-1 bg-slate-900/90 backdrop-blur-md border border-slate-700/60 rounded-full px-2 sm:px-2.5 py-1 shadow-xl text-[11px] sm:text-xs max-w-[calc(100%-1rem)]">
         <button
           onClick={() => { setTool(tool === 'ping' ? 'move' : 'ping'); setRulerStart(null); }}
-          className={`px-2 py-1 rounded-full flex items-center gap-1 font-medium transition ${
+          className={`px-1.5 sm:px-2 py-1 rounded-full flex items-center gap-1 font-medium transition ${
             tool === 'ping' ? 'bg-amber-500 text-slate-950' : 'hover:bg-slate-800 text-slate-300'
           }`}
           title="ชี้ตำแหน่งบนแผนที่"
         >
-          <Crosshair className="w-3.5 h-3.5" /> Ping
+          <Crosshair className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Ping</span>
         </button>
         <button
           onClick={() => { setTool(tool === 'ruler' ? 'move' : 'ruler'); setRulerStart(null); }}
-          className={`px-2 py-1 rounded-full flex items-center gap-1 font-medium transition ${
+          className={`px-1.5 sm:px-2 py-1 rounded-full flex items-center gap-1 font-medium transition ${
             tool === 'ruler' ? 'bg-sky-500 text-slate-950' : 'hover:bg-slate-800 text-slate-300'
           }`}
           title="วัดระยะ (1 ช่อง = 5 ft)"
         >
-          <Ruler className="w-3.5 h-3.5" /> วัดระยะ
+          <Ruler className="w-3.5 h-3.5" /> <span className="hidden sm:inline">วัดระยะ</span>
         </button>
 
         {isDM && (
           <>
             <button
               onClick={() => { setTool(tool === 'fog' ? 'move' : 'fog'); setRulerStart(null); }}
-              className={`px-2 py-1 rounded-full flex items-center gap-1 font-medium transition ${
+              className={`px-1.5 sm:px-2 py-1 rounded-full flex items-center gap-1 font-medium transition ${
                 tool === 'fog' ? 'bg-purple-500 text-white' : 'hover:bg-slate-800 text-slate-300'
               }`}
               title="วาด/ลบหมอกบังแผนที่ (Fog of War)"
             >
-              <CloudFog className="w-3.5 h-3.5" /> หมอก
+              <CloudFog className="w-3.5 h-3.5" /> <span className="hidden sm:inline">หมอก</span>
             </button>
             {tool === 'fog' && onSetAllFog && (
               <div className="flex items-center gap-1 ml-0.5">
@@ -210,35 +217,35 @@ export const BattlemapCanvas: React.FC<BattlemapCanvasProps> = ({
                   onClick={() => onSetAllFog(true)}
                   className="px-2 py-0.5 rounded-full bg-purple-600/40 hover:bg-purple-600 text-[10px] font-bold text-purple-200"
                 >
-                  บังทั้งหมด
+                  บังหมด
                 </button>
                 <button
                   onClick={() => onSetAllFog(false)}
                   className="px-2 py-0.5 rounded-full bg-slate-800 hover:bg-slate-700 text-[10px] font-bold text-slate-300"
                 >
-                  เปิดทั้งหมด
+                  เปิดหมด
                 </button>
               </div>
             )}
           </>
         )}
 
-        <div className="h-3.5 w-px bg-slate-700/70 mx-0.5" />
-        <Grid className="w-3.5 h-3.5 text-slate-400" />
+        <div className="hidden sm:block h-3.5 w-px bg-slate-700/70 mx-0.5" />
+        <Grid className="hidden sm:block w-3.5 h-3.5 text-slate-400" />
         <input
           type="range"
           min={0}
           max={60}
           value={gridOpacity}
           onChange={(e) => setGridOpacity(Number(e.target.value))}
-          className="w-12 accent-indigo-500"
+          className="hidden sm:inline-block w-12 accent-indigo-500"
           title="ความชัดตาราง"
         />
         <div className="h-3.5 w-px bg-slate-700/70 mx-0.5" />
         <button onClick={() => setZoom((z) => Math.max(0.75, z - 0.15))} className="p-1 rounded-full hover:bg-slate-800 text-slate-300">
           <ZoomOut className="w-3.5 h-3.5" />
         </button>
-        <span className="font-mono text-[11px] w-9 text-center text-slate-300">{Math.round(zoom * 100)}%</span>
+        <span className="font-mono text-[10px] sm:text-[11px] w-8 sm:w-9 text-center text-slate-300">{Math.round(zoom * 100)}%</span>
         <button onClick={() => setZoom((z) => Math.min(1.6, z + 0.15))} className="p-1 rounded-full hover:bg-slate-800 text-slate-300">
           <ZoomIn className="w-3.5 h-3.5" />
         </button>

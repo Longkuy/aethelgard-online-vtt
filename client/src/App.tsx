@@ -23,8 +23,8 @@ export function App() {
   const [toast, setToast] = useState<string | null>(null);
   const [connectingMsg, setConnectingMsg] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [showLeft, setShowLeft] = useState(true);
-  const [showRight, setShowRight] = useState(true);
+  const [showLeft, setShowLeft] = useState(() => (typeof window !== 'undefined' ? window.innerWidth >= 768 : true));
+  const [showRight, setShowRight] = useState(() => (typeof window !== 'undefined' ? window.innerWidth >= 768 : true));
   const [showLog, setShowLog] = useState(false);
 
   const urlRoom = new URLSearchParams(window.location.search).get('room') || 'AETHEL';
@@ -275,53 +275,66 @@ export function App() {
   };
 
   return (
-    <div className="h-screen w-screen bg-slate-950 text-slate-100 flex flex-col overflow-hidden">
+    <div className="h-[100dvh] w-screen bg-slate-950 text-slate-100 flex flex-col overflow-hidden">
       {/* Top Roll20-style Compact Header */}
-      <header className="h-12 bg-slate-900 border-b border-slate-800 px-3 flex items-center justify-between shrink-0 z-40">
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center">
+      <header className="h-12 bg-slate-900 border-b border-slate-800 px-2 sm:px-3 flex items-center justify-between shrink-0 z-40 gap-1.5">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
+          <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center shrink-0">
             <Swords className="w-4 h-4 text-white" />
           </div>
-          <span className="font-bold text-sm tracking-tight">Aethelgard Online</span>
-          <span className="text-xs px-2 py-0.5 rounded bg-slate-800 font-mono text-indigo-300 font-bold">
-            ห้อง: {roomState.roomId}
+          <span className="hidden md:inline font-bold text-sm tracking-tight">Aethelgard Online</span>
+          <span className="text-[11px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded bg-slate-800 font-mono text-indigo-300 font-bold truncate">
+            {roomState.roomId}
           </span>
-          <span className={`text-[11px] px-2 py-0.5 rounded font-bold ${isDM ? 'bg-amber-500/20 text-amber-300' : 'bg-emerald-500/20 text-emerald-300'}`}>
-            {isDM ? '👑 Host (DM)' : `🎮 ${session.playerName}`}
+          <span className={`hidden sm:inline-block text-[11px] px-2 py-0.5 rounded font-bold truncate max-w-[120px] ${isDM ? 'bg-amber-500/20 text-amber-300' : 'bg-emerald-500/20 text-emerald-300'}`}>
+            {isDM ? '👑 DM' : `🎮 ${session.playerName}`}
           </span>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
           <button
             onClick={() => setShowLog((v) => !v)}
-            className={`px-2.5 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-1 transition ${
+            className={`px-2 sm:px-2.5 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-1 transition ${
               showLog ? 'bg-indigo-600/30 border-indigo-500 text-indigo-200' : 'border-transparent text-slate-300 hover:bg-slate-800'
             }`}
             title="ดูบันทึกการต่อสู้และทอยเต๋าย้อนหลัง"
           >
-            <ScrollText className="w-3.5 h-3.5" /> บันทึก
+            <ScrollText className="w-3.5 h-3.5" /> <span className="hidden sm:inline">บันทึก</span>
           </button>
           <button
-            onClick={() => setShowLeft((v) => !v)}
+            onClick={() => {
+              setShowLeft((v) => {
+                const next = !v;
+                if (next && window.innerWidth < 768) setShowRight(false);
+                return next;
+              });
+            }}
             className={`p-1.5 rounded-lg border text-xs transition ${showLeft ? 'bg-slate-800 border-slate-700 text-white' : 'border-transparent text-slate-400 hover:bg-slate-800'}`}
             title="ซ่อน/แสดงแถบปาร์ตี้"
           >
             <PanelLeft className="w-4 h-4" />
           </button>
           <button
-            onClick={() => setShowRight((v) => !v)}
+            onClick={() => {
+              setShowRight((v) => {
+                const next = !v;
+                if (next && window.innerWidth < 768) setShowLeft(false);
+                return next;
+              });
+            }}
             className={`p-1.5 rounded-lg border text-xs transition ${showRight ? 'bg-slate-800 border-slate-700 text-white' : 'border-transparent text-slate-400 hover:bg-slate-800'}`}
             title="ซ่อน/แสดงตัวละครและเต๋า"
           >
             <PanelRight className="w-4 h-4" />
           </button>
-          <div className="h-4 w-px bg-slate-800 mx-0.5" />
+          <div className="hidden sm:block h-4 w-px bg-slate-800 mx-0.5" />
           <button
             onClick={copyInvite}
-            className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+            className="px-2 sm:px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+            title="คัดลอกลิงก์ชวนเพื่อน"
           >
             {copied ? <Check className="w-3.5 h-3.5" /> : <Share2 className="w-3.5 h-3.5" />}
-            {copied ? 'คัดลอกลิงก์แล้ว!' : 'ชวนเพื่อน'}
+            <span className="hidden sm:inline">{copied ? 'คัดลอกลิงก์แล้ว!' : 'ชวนเพื่อน'}</span>
           </button>
           <button
             onClick={() => window.location.reload()}
@@ -335,14 +348,14 @@ export function App() {
 
       {/* Toast */}
       {toast && (
-        <div className="fixed top-14 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-xl bg-rose-600 text-white text-xs font-bold shadow-2xl">
+        <div className="fixed top-14 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-xl bg-rose-600 text-white text-xs font-bold shadow-2xl max-w-[90vw] text-center">
           ⚠️ {toast}
         </div>
       )}
 
       {/* Collapsible Combat Log Drawer */}
       {showLog && (
-        <div className="fixed top-14 right-4 z-40 w-80 max-h-[65vh] bg-slate-900/95 backdrop-blur-xl border border-slate-700/80 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+        <div className="fixed top-14 left-2 right-2 sm:left-auto sm:right-4 z-40 sm:w-80 max-h-[65vh] bg-slate-900/95 backdrop-blur-xl border border-slate-700/80 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
           <div className="px-3 py-2.5 border-b border-slate-800 flex items-center justify-between">
             <span className="font-bold text-xs text-white flex items-center gap-1.5">
               <ScrollText className="w-3.5 h-3.5 text-indigo-400" /> บันทึกการต่อสู้ & ทอยเต๋า
@@ -400,25 +413,37 @@ export function App() {
       {/* Animated Dice Roll Overlay */}
       <DiceRollOverlay latestLog={roomState.logs?.[0]} />
 
-      {/* Main Roll20 3-Column Workspace */}
-      <div className="flex-1 flex min-h-0 overflow-hidden">
-        {showLeft && (
-          <TurnTracker
-            party={roomState.party}
-            inCombat={Boolean(roomState.inCombat)}
-            round={roomState.round || 1}
-            turnIndex={roomState.turnIndex}
-            selectedCharId={selectedCharId}
-            players={roomState.players}
-            isDM={isDM}
-            onSelectChar={(id) => setSelectedCharId(id)}
-            onRollInit={() => dispatchAction({ type: 'roll_initiative' })}
-            onStartCombat={() => dispatchAction({ type: 'start_combat' })}
-            onEndCombat={() => dispatchAction({ type: 'end_combat' })}
-            onNextTurn={() => dispatchAction({ type: 'next_turn' })}
-            onRemoveEntity={(charId) => dispatchAction({ type: 'remove_entity', payload: { charId } })}
-            onToggleHidden={(charId) => dispatchAction({ type: 'toggle_token_hidden', payload: { charId } })}
+      {/* Main Roll20 3-Column Workspace (Slide-over Drawers on Mobile) */}
+      <div className="flex-1 flex min-h-0 overflow-hidden relative">
+        {(showLeft || showRight) && (
+          <div
+            onClick={() => {
+              setShowLeft(false);
+              setShowRight(false);
+            }}
+            className="fixed inset-0 top-12 bg-black/50 backdrop-blur-[1px] z-30 md:hidden"
           />
+        )}
+
+        {showLeft && (
+          <div className="fixed inset-y-0 top-12 left-0 z-35 flex md:static md:z-auto shadow-2xl md:shadow-none">
+            <TurnTracker
+              party={roomState.party}
+              inCombat={Boolean(roomState.inCombat)}
+              round={roomState.round || 1}
+              turnIndex={roomState.turnIndex}
+              selectedCharId={selectedCharId}
+              players={roomState.players}
+              isDM={isDM}
+              onSelectChar={(id) => setSelectedCharId(id)}
+              onRollInit={() => dispatchAction({ type: 'roll_initiative' })}
+              onStartCombat={() => dispatchAction({ type: 'start_combat' })}
+              onEndCombat={() => dispatchAction({ type: 'end_combat' })}
+              onNextTurn={() => dispatchAction({ type: 'next_turn' })}
+              onRemoveEntity={(charId) => dispatchAction({ type: 'remove_entity', payload: { charId } })}
+              onToggleHidden={(charId) => dispatchAction({ type: 'toggle_token_hidden', payload: { charId } })}
+            />
+          </div>
         )}
 
         {/* Center Map + Floating Bottom Skill Hotbar */}
@@ -463,43 +488,45 @@ export function App() {
         </div>
 
         {showRight && (
-          <CharacterAndDice
-            character={
-              isDM
-                ? activeChar
-                : roomState.party.find((c: any) => c.id === session.myCharId) || activeChar
-            }
-            act={roomState.act}
-            customMapName={roomState.customMapName}
-            isDM={isDM}
-            onRollDice={(sides, mod, mode, label) =>
-              dispatchAction({ type: 'roll_dice', payload: { sides, mod, mode, label, rollerName: session.playerName } })
-            }
-            onUpdateEquipment={(charId, equipment) =>
-              dispatchAction({ type: 'update_equipment', payload: { charId, equipment } })
-            }
-            onEditStats={(charId, patch) =>
-              dispatchAction({ type: 'edit_character_stats', payload: { charId, ...patch } })
-            }
-            onToggleCondition={(charId, condition) =>
-              dispatchAction({ type: 'toggle_condition', payload: { charId, condition } })
-            }
-            onSetTokenSize={(charId, size) =>
-              dispatchAction({ type: 'set_token_size', payload: { charId, size } })
-            }
-            onGrantSp={(charId, amount) =>
-              dispatchAction({ type: 'grant_sp', payload: { charId, amount } })
-            }
-            onSetAct={(act) => dispatchAction({ type: 'set_act', payload: act })}
-            onSetCustomMap={(mapUrl, mapName) =>
-              dispatchAction({ type: 'set_custom_map', payload: { mapUrl, mapName } })
-            }
-            onSpawnEnemies={() => dispatchAction({ type: 'spawn_enemies' })}
-            onSpawnCustom={(entity) => dispatchAction({ type: 'spawn_custom_entity', payload: entity })}
-            onResetRoom={() => dispatchAction({ type: 'reset_room' })}
-            onExportRoom={handleExportRoom}
-            onImportRoom={(state) => dispatchAction({ type: 'import_room', payload: { state } })}
-          />
+          <div className="fixed inset-y-0 top-12 right-0 z-35 flex md:static md:z-auto shadow-2xl md:shadow-none">
+            <CharacterAndDice
+              character={
+                isDM
+                  ? activeChar
+                  : roomState.party.find((c: any) => c.id === session.myCharId) || activeChar
+              }
+              act={roomState.act}
+              customMapName={roomState.customMapName}
+              isDM={isDM}
+              onRollDice={(sides, mod, mode, label) =>
+                dispatchAction({ type: 'roll_dice', payload: { sides, mod, mode, label, rollerName: session.playerName } })
+              }
+              onUpdateEquipment={(charId, equipment) =>
+                dispatchAction({ type: 'update_equipment', payload: { charId, equipment } })
+              }
+              onEditStats={(charId, patch) =>
+                dispatchAction({ type: 'edit_character_stats', payload: { charId, ...patch } })
+              }
+              onToggleCondition={(charId, condition) =>
+                dispatchAction({ type: 'toggle_condition', payload: { charId, condition } })
+              }
+              onSetTokenSize={(charId, size) =>
+                dispatchAction({ type: 'set_token_size', payload: { charId, size } })
+              }
+              onGrantSp={(charId, amount) =>
+                dispatchAction({ type: 'grant_sp', payload: { charId, amount } })
+              }
+              onSetAct={(act) => dispatchAction({ type: 'set_act', payload: act })}
+              onSetCustomMap={(mapUrl, mapName) =>
+                dispatchAction({ type: 'set_custom_map', payload: { mapUrl, mapName } })
+              }
+              onSpawnEnemies={() => dispatchAction({ type: 'spawn_enemies' })}
+              onSpawnCustom={(entity) => dispatchAction({ type: 'spawn_custom_entity', payload: entity })}
+              onResetRoom={() => dispatchAction({ type: 'reset_room' })}
+              onExportRoom={handleExportRoom}
+              onImportRoom={(state) => dispatchAction({ type: 'import_room', payload: { state } })}
+            />
+          </div>
         )}
       </div>
     </div>

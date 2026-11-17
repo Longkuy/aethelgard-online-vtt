@@ -43,7 +43,7 @@ export const SkillHotbar: React.FC<SkillHotbarProps> = ({
 
       {/* Popover Skill Menu (Opened via Button) */}
       {openMenu && (
-        <div className="w-[340px] sm:w-[460px] bg-slate-900/95 backdrop-blur-xl border border-slate-700/80 rounded-2xl p-3.5 shadow-2xl space-y-3">
+        <div className="w-[calc(100vw-1rem)] max-w-[460px] bg-slate-900/95 backdrop-blur-xl border border-slate-700/80 rounded-2xl p-3 sm:p-3.5 shadow-2xl space-y-3">
           <div className="flex items-center justify-between border-b border-slate-800 pb-2">
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-indigo-400" />
@@ -150,10 +150,10 @@ export const SkillHotbar: React.FC<SkillHotbarProps> = ({
       )}
 
       {/* Minimal Bottom Character Pill + Skill Menu Button */}
-      <div className="bg-slate-900/90 backdrop-blur-xl border border-slate-700/70 rounded-full px-3 py-1.5 shadow-2xl flex items-center gap-3">
-        <div className="flex items-center gap-2">
+      <div className="bg-slate-900/90 backdrop-blur-xl border border-slate-700/70 rounded-2xl sm:rounded-full px-2.5 sm:px-3 py-1.5 shadow-2xl flex flex-wrap sm:flex-nowrap items-center justify-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <div
-            className="w-8 h-8 rounded-full flex items-center justify-center text-base border-2 border-white/80 overflow-hidden shrink-0"
+            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-sm sm:text-base border-2 border-white/80 overflow-hidden shrink-0"
             style={{ backgroundColor: character.color || '#6366f1' }}
           >
             {character.avatarUrl ? (
@@ -162,12 +162,12 @@ export const SkillHotbar: React.FC<SkillHotbarProps> = ({
               character.icon || '🧙'
             )}
           </div>
-          <span className="font-bold text-xs text-white whitespace-nowrap">{character.name.split('(')[0].trim()}</span>
+          <span className="font-bold text-xs text-white truncate max-w-[85px] sm:max-w-none">{character.name.split('(')[0].trim()}</span>
         </div>
 
-        <div className="h-4 w-px bg-slate-800" />
+        <div className="hidden sm:block h-4 w-px bg-slate-800" />
 
-        <div className="flex items-center gap-2.5 text-[11px] font-mono">
+        <div className="flex items-center gap-2 text-[11px] font-mono">
           <span className="flex items-center gap-1 text-rose-300">
             <Heart className="w-3.5 h-3.5 text-rose-400" />
             <button onClick={() => onUpdateHp(character.id, -1)} className="hover:text-white px-0.5">-</button>
@@ -184,12 +184,12 @@ export const SkillHotbar: React.FC<SkillHotbarProps> = ({
 
         <button
           onClick={() => setOpenMenu((v) => !v)}
-          className={`px-3.5 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
+          className={`px-3 sm:px-3.5 py-1 sm:py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
             openMenu ? 'bg-indigo-500 text-white' : 'bg-indigo-600 hover:bg-indigo-500 text-white'
           }`}
         >
           <Sparkles className="w-3.5 h-3.5" />
-          สกิล {sp > 0 ? `(+${sp} SP)` : ''}
+          สกิล {sp > 0 ? `(+${sp})` : ''}
         </button>
       </div>
     </div>
