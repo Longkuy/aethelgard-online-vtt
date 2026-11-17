@@ -8,18 +8,23 @@ import { CharacterAndDice } from './components/CharacterAndDice';
 import { DiceRollOverlay } from './components/DiceRollOverlay';
 import { SkillDef } from './data/aethelgard';
 import { createInitialRoomState, applyRoomAction } from './lib/roomEngine';
-import { Share2, LogOut, Swords, Check, PanelLeft, PanelRight, ScrollText, X } from 'lucide-react';
+import { isSoundMuted, setSoundMuted, playNotice } from './lib/soundFx';
+import { Share2, LogOut, Swords, Check, PanelLeft, PanelRight, ScrollText, X, Volume2, VolumeX } from 'lucide-react';
 
 export function App() {
   const peerRef = useRef<Peer | null>(null);
   const connsRef = useRef<DataConnection[]>([]);
   const hostConnRef = useRef<DataConnection | null>(null);
   const roomStateRef = useRef<any>(null);
+  const lastAnnIdRef = useRef<number | null>(null);
 
   const [roomState, setRoomState] = useState<any>(null);
   const [session, setSession] = useState<{ roomId: string; playerName: string; role: 'dm' | 'player'; myCharId: string | null } | null>(null);
   const [selectedCharId, setSelectedCharId] = useState<string | null>(null);
   const [pings, setPings] = useState<any[]>([]);
+  const [emotes, setEmotes] = useState<any[]>([]);
+  const [muted, setMuted] = useState(() => isSoundMuted());
+  const [activeAnnouncement, setActiveAnnouncement] = useState<any>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [connectingMsg, setConnectingMsg] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -39,6 +44,13 @@ export function App() {
     setTimeout(() => {
       setPings((prev) => prev.filter((p) => p.id !== ping.id));
     }, 1500);
+  };
+
+  const triggerEmote = (emote: any) => {
+    setEmotes((prev) => [...prev, emote]);
+    setTimeout(() => {
+      setEmotes((prev) => prev.filter((e) => e.id !== emote.id));
+    }, 2500);
   };
 
   const broadcastState = (nextState: any) => {
@@ -95,6 +107,31 @@ export function App() {
       hostConnRef.current.send({ type: 'map_ping', ping });
     }
   };
+
+  const emitEmote = (emoji: string) => {
+    const tokenId = session?.role === 'dm' ? (selectedCharId || roomStateRef.current?.party?.[0]?.id) : (session?.myCharId || selectedCharId);
+    if (!tokenId) return;
+    const emote = { id: Date.now() + Math.random(), tokenId, emoji };
+    if (session?.role === 'dm') {
+      triggerEmote(emote);
+      connsRef.current.forEach((c) => {
+        if (c.open) c.send({ type: 'token_emote', emote });
+      });
+    } else if (hostConnRef.current?.open) {
+      hostConnRef.current.send({ type: 'token_emote', emote });
+    }
+  };
+
+  useEffect(() => {
+    const ann = roomState?.announcement;
+    if (ann?.id && ann.id !== lastAnnIdRef.current) {
+      lastAnnIdRef.current = ann.id;
+      setActiveAnnouncement(ann);
+      playNotice();
+      const timer = setTimeout(() => setActiveAnnouncement(null), 6000);
+      return () => clearTimeout(timer);
+    }
+  }, [roomState?.announcement?.id]);
 
   useEffect(() => {
     return () => {
@@ -168,6 +205,11 @@ export function App() {
             connsRef.current.forEach((c) => {
               if (c.open) c.send({ type: 'map_ping', ping: data.ping });
             });
+          } else if (data?.type === 'token_emote') {
+            triggerEmote(data.emote);
+            connsRef.current.forEach((c) => {
+              if (c.open) c.send({ type: 'token_emote', emote: data.emote });
+            });
           }
         });
         conn.on('close', () => {
@@ -207,6 +249,8 @@ export function App() {
             });
           } else if (data?.type === 'map_ping') {
             triggerPing(data.ping);
+          } else if (data?.type === 'token_emote') {
+            triggerEmote(data.emote);
           } else if (data?.type === 'toast_error') {
             showToast(data.message);
           }
@@ -293,6 +337,17 @@ export function App() {
 
         <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
           <button
+            onClick={() => {
+              const next = !muted;
+              setMuted(next);
+              setSoundMuted(next);
+            }}
+            className="p-1.5 rounded-lg border border-transparent text-slate-300 hover:bg-slate-800 transition"
+            title={muted ? 'เปิดเสียงเอฟเฟกต์' : 'ปิดเสียงเอฟเฟกต์'}
+          >
+            {muted ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4 text-emerald-400" />}
+          </button>
+          <button
             onClick={() => setShowLog((v) => !v)}
             className={`px-2 sm:px-2.5 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-1 transition ${
               showLog ? 'bg-indigo-600/30 border-indigo-500 text-indigo-200' : 'border-transparent text-slate-300 hover:bg-slate-800'
@@ -345,6 +400,28 @@ export function App() {
           </button>
         </div>
       </header>
+
+      {/* DM Announcement / Boss Intro Banner */}
+      {activeAnnouncement && (
+        <div
+          onClick={() => setActiveAnnouncement(null)}
+          className={`fixed top-16 left-1/2 -translate-x-1/2 z-50 w-[92vw] max-w-md px-5 py-3.5 rounded-2xl border-2 shadow-2xl backdrop-blur-xl cursor-pointer text-center transition ${
+            activeAnnouncement.style === 'boss'
+              ? 'bg-rose-950/95 border-rose-500 text-rose-100'
+              : activeAnnouncement.style === 'loot'
+              ? 'bg-amber-950/95 border-amber-400 text-amber-100'
+              : 'bg-indigo-950/95 border-indigo-400 text-indigo-100'
+          }`}
+        >
+          <div className="text-[11px] uppercase tracking-wider font-bold opacity-80">
+            {activeAnnouncement.style === 'boss' ? '🐉 BOSS ENCOUNTER' : activeAnnouncement.style === 'loot' ? '🎁 TREASURE & LOOT' : '📜 DM NARRATION'}
+          </div>
+          <div className="text-base sm:text-lg font-black mt-0.5">{activeAnnouncement.title}</div>
+          {activeAnnouncement.text && (
+            <div className="text-xs sm:text-sm opacity-90 mt-1">{activeAnnouncement.text}</div>
+          )}
+        </div>
+      )}
 
       {/* Toast */}
       {toast && (
@@ -473,6 +550,8 @@ export function App() {
             onPingMap={emitPing}
             onToggleFog={(cells, mode) => dispatchAction({ type: 'toggle_fog', payload: { cells, mode } })}
             onSetAllFog={(enabled) => dispatchAction({ type: 'set_all_fog', payload: { enabled } })}
+            emotes={emotes}
+            onSendEmote={emitEmote}
           />
 
           <SkillHotbar
@@ -495,6 +574,7 @@ export function App() {
                   ? activeChar
                   : roomState.party.find((c: any) => c.id === session.myCharId) || activeChar
               }
+              party={roomState.party}
               act={roomState.act}
               customMapName={roomState.customMapName}
               isDM={isDM}
@@ -515,6 +595,18 @@ export function App() {
               }
               onGrantSp={(charId, amount) =>
                 dispatchAction({ type: 'grant_sp', payload: { charId, amount } })
+              }
+              onRollDeathSave={(charId) =>
+                dispatchAction({ type: 'roll_death_save', payload: { charId } })
+              }
+              onPartyRest={(restType) =>
+                dispatchAction({ type: 'party_rest', payload: { type: restType } })
+              }
+              onGiveLoot={(payload) =>
+                dispatchAction({ type: 'give_loot', payload })
+              }
+              onAnnounce={(payload) =>
+                dispatchAction({ type: 'announce_scene', payload })
               }
               onSetAct={(act) => dispatchAction({ type: 'set_act', payload: act })}
               onSetCustomMap={(mapUrl, mapName) =>

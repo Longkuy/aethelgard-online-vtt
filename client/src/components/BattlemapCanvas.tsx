@@ -40,7 +40,11 @@ interface BattlemapCanvasProps {
   onPingMap: (x: number, y: number) => void;
   onToggleFog?: (cells: string[], mode: 'add' | 'remove' | 'toggle') => void;
   onSetAllFog?: (enabled: boolean) => void;
+  emotes?: Array<{ id: number; tokenId: string; emoji: string }>;
+  onSendEmote?: (emoji: string) => void;
 }
+
+const EMOTE_LIST = ['😂', '😱', '💀', '🔥', '❤️', '❓'];
 
 const CONDITION_EMOJI: Record<string, string> = {
   Poisoned: '🤢',
@@ -66,7 +70,9 @@ export const BattlemapCanvas: React.FC<BattlemapCanvasProps> = ({
   onSelectToken,
   onPingMap,
   onToggleFog,
-  onSetAllFog
+  onSetAllFog,
+  emotes = [],
+  onSendEmote
 }) => {
   const [zoom, setZoom] = useState(1);
   const [gridOpacity, setGridOpacity] = useState(18);
@@ -251,6 +257,23 @@ export const BattlemapCanvas: React.FC<BattlemapCanvasProps> = ({
         </button>
       </div>
 
+      {/* Quick Emote Bar (Bottom-Left) */}
+      {onSendEmote && (
+        <div className="absolute bottom-32 md:bottom-22 left-2 sm:left-3 z-20 flex items-center gap-0.5 bg-slate-900/90 backdrop-blur-md border border-slate-700/60 rounded-full px-1.5 py-1 shadow-xl">
+          {EMOTE_LIST.map((em) => (
+            <button
+              key={em}
+              type="button"
+              onClick={() => onSendEmote(em)}
+              className="w-7 h-7 sm:w-6 sm:h-6 rounded-full hover:bg-slate-800 active:scale-125 flex items-center justify-center text-sm transition"
+              title={`ส่งอิโมจิ ${em} บนตัวละคร`}
+            >
+              {em}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Ruler Distance Pill */}
       {tool === 'ruler' && (
         <div className="absolute top-14 right-3 z-20 px-3 py-1.5 rounded-xl bg-sky-950/90 border border-sky-500/60 text-xs font-bold text-sky-200 shadow-lg">
@@ -382,6 +405,19 @@ export const BattlemapCanvas: React.FC<BattlemapCanvasProps> = ({
                             ))}
                           </div>
                         )}
+
+                        {/* Floating Emote Reaction */}
+                        {emotes
+                          .filter((e) => e.tokenId === token.id)
+                          .slice(-1)
+                          .map((e) => (
+                            <div
+                              key={e.id}
+                              className="absolute -top-8 left-1/2 -translate-x-1/2 z-40 px-2 py-0.5 rounded-full bg-slate-950/95 border border-amber-400/70 shadow-xl text-base leading-none animate-bounce pointer-events-none"
+                            >
+                              {e.emoji}
+                            </div>
+                          ))}
                       </div>
                     )}
                   </div>

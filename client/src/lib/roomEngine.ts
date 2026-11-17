@@ -21,6 +21,7 @@ export function createInitialRoomState(roomId: string) {
     customMapUrl: null as string | null,
     customMapName: null as string | null,
     fog: [] as string[],
+    announcement: null as { id: string; title: string; text: string; style: 'story' | 'boss' | 'loot' } | null,
     inCombat: false,
     round: 1,
     turnIndex: 0,
@@ -106,7 +107,10 @@ export function applyRoomAction(prevRoom: any, action: { type: string; payload?:
     case 'update_hp': {
       const { charId, delta } = payload;
       const c = room.party.find((m: any) => m.id === charId);
-      if (c) c.hp = Math.max(0, Math.min(c.maxHp, c.hp + delta));
+      if (c) {
+        c.hp = Math.max(0, Math.min(c.maxHp, c.hp + delta));
+        if (c.hp > 0) c.deathSaves = { successes: 0, failures: 0 };
+      }
       return { room };
     }
 
@@ -529,6 +533,138 @@ export function applyRoomAction(prevRoom: any, action: { type: string; payload?:
           pushLog(room, { type: 'system', who: 'DM', text: `⬆️ ${c.name} ได้รับ +${amt} Skill Point` });
         }
       }
+      return { room };
+    }
+
+    case 'roll_death_save': {
+      const { charId } = payload;
+      const c = room.party.find((m: any) => m.id === charId);
+      if (!c) return { room };
+      const ds = c.deathSaves || { successes: 0, failures: 0 };
+      const raw = rollDie(20);
+      let outcomeText = '';
+      if (raw === 20) {
+        c.hp = 1;
+        c.deathSaves = { successes: 0, failures: 0 };
+        outcomeText = '🌟 NAT 20! ฟื้นคืนสติกลับมาพร้อม 1 HP!';
+      } else if (raw === 1) {
+        ds.failures = Math.min(3, ds.failures + 2);
+        c.deathSaves = ds;
+        outcomeText = `💀 NAT 1! พลาด 2 ขีด (${ds.failures}/3)`;
+      } else if (raw >= 10) {
+        ds.successes = Math.min(3, ds.successes + 1);
+        if (ds.successes >= 3) {
+          c.hp = 1;
+          c.deathSaves = { successes: 0, failures: 0 };
+          outcomeText = '💚 รอดตายครบ 3 ครั้ง! อาการคงที่และฟื้น 1 HP';
+        } else {
+          c.deathSaves = ds;
+          outcomeText = `✅ ผ่าน (${ds.successes}/3)`;
+        }
+      } else {
+        ds.failures = Math.min(3, ds.failures + 1);
+        c.deathSaves = ds;
+        outcomeText = ds.failures >= 3 ? '💀 ล้มเหลวครบ 3 ครั้ง!' : `❌ พลาด (${ds.failures}/3)`;
+      }
+      pushLog(room, {
+        type: 'dice',
+        who: c.name,
+        label: `Death Save (${outcomeText})`,
+        raw,
+        mod: 0,
+        total: raw,
+        detail: `${raw}`,
+        isCrit: raw === 20,
+        isFumble: raw === 1
+      });
+      return { room };
+    }
+
+    case 'party_rest': {
+      const { type: restType } = payload as { type: 'short' | 'long' };
+      const negConds = new Set(['Poisoned', 'Stunned', 'Prone', 'Burn', 'Frozen']);
+      room.party.forEach((m: any) => {
+        if (m.isEnemy) return;
+        if (restType === 'long') {
+          m.hp = m.maxHp;
+          m.mp = m.maxMp ?? 0;
+          m.deathSaves = { successes: 0, failures: 0 };
+          if (Array.isArray(m.conditions)) {
+            m.conditions = m.conditions.filter((cond: string) => !negConds.has(cond));
+          }
+        } else {
+          const healHp = Math.max(1, Math.floor((m.maxHp || 10) * 0.5));
+          const healMp = Math.max(1, Math.floor((m.maxMp || 0) * 0.5));
+          m.hp = Math.min(m.maxHp, (m.hp || 0) + healHp);
+          m.mp = Math.min(m.maxMp ?? 0, (m.mp || 0) + healMp);
+          if (m.hp > 0) m.deathSaves = { successes: 0, failures: 0 };
+        }
+      });
+      pushLog(room, {
+        type: 'system',
+        who: 'REST',
+        text: restType === 'long' ? '🛏️ Long Rest! ปาร์ตี้ฟื้นฟู HP, พลังงาน และล้างสถานะผิดปกติทั้งหมด' : '🏕️ Short Rest! ปาร์ตี้ฟื้นฟู HP และพลังงาน 50%'
+      });
+      return { room };
+    }
+
+    case 'give_loot': {
+      const { targetId, itemName, itemIcon, qty, gold } = payload;
+      const targets =
+        targetId === 'ALL'
+          ? room.party.filter((m: any) => !m.isEnemy)
+          : room.party.filter((m: any) => m.id === targetId);
+      const goldAmt = Math.max(0, Number(gold) || 0);
+      const itemQty = Math.max(1, Number(qty) || 1);
+      const cleanName = String(itemName || '').trim();
+
+      targets.forEach((c: any) => {
+        if (!c.equipment) c.equipment = { head: '', weapon: '', offhand: '', armor: '', accessory: '', boots: '', gold: 0, bag: [] };
+        c.equipment.gold = (Number(c.equipment.gold) || 0) + goldAmt;
+        if (cleanName) {
+          const bag = Array.isArray(c.equipment.bag) ? [...c.equipment.bag] : [];
+          const existingIdx = bag.findIndex((b: any) => typeof b === 'object' && b.name === cleanName);
+          if (existingIdx >= 0) {
+            bag[existingIdx] = { ...bag[existingIdx], qty: (bag[existingIdx].qty || 1) + itemQty };
+          } else if (bag.length < 12) {
+            bag.push({
+              id: 'loot_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5),
+              name: cleanName,
+              icon: itemIcon || '💎',
+              qty: itemQty
+            });
+          }
+          c.equipment.bag = bag;
+        }
+      });
+
+      const targetLabel = targetId === 'ALL' ? 'ทั้งปาร์ตี้' : targets[0]?.name || 'ผู้เล่น';
+      const parts: string[] = [];
+      if (cleanName) parts.push(`${itemIcon || '💎'} ${cleanName} x${itemQty}`);
+      if (goldAmt > 0) parts.push(`💰 ${goldAmt} Gold`);
+      if (parts.length > 0) {
+        pushLog(room, {
+          type: 'system',
+          who: 'LOOT',
+          text: `🎁 DM มอบ ${parts.join(' + ')} ให้ ${targetLabel}!`
+        });
+      }
+      return { room };
+    }
+
+    case 'announce_scene': {
+      const { title, text, style } = payload;
+      room.announcement = {
+        id: 'ann_' + Date.now(),
+        title: String(title || '').trim() || 'ประกาศจาก DM',
+        text: String(text || '').trim(),
+        style: style === 'boss' || style === 'loot' ? style : 'story'
+      };
+      pushLog(room, {
+        type: 'narration',
+        who: 'DM',
+        text: `📢 ${room.announcement.title}${room.announcement.text ? `: ${room.announcement.text}` : ''}`
+      });
       return { room };
     }
 

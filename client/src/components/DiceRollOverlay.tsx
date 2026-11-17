@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { playDiceRoll, playCrit, playFumble, playHit, playHeal } from '../lib/soundFx';
 
 interface DiceRollOverlayProps {
   latestLog: any;
@@ -22,6 +23,7 @@ export const DiceRollOverlay: React.FC<DiceRollOverlayProps> = ({ latestLog }) =
 
     setVisible(true);
     setRolling(true);
+    playDiceRoll();
 
     const interval = setInterval(() => {
       setDisplayNum(Math.floor(Math.random() * 20) + 1);
@@ -31,6 +33,12 @@ export const DiceRollOverlay: React.FC<DiceRollOverlayProps> = ({ latestLog }) =
       clearInterval(interval);
       setRolling(false);
       setDisplayNum(finalVal);
+      const crit = latestLog.type === 'dice' ? latestLog.isCrit : latestLog.hit?.isCrit;
+      const fumble = latestLog.type === 'dice' ? latestLog.isFumble : latestLog.hit?.isFumble;
+      if (crit) playCrit();
+      else if (fumble) playFumble();
+      else if (latestLog.type === 'skill' && latestLog.skillType === 'Heal') playHeal();
+      else if (latestLog.type === 'skill' && latestLog.hitOutcome === 'hit') playHit();
     }, 650);
 
     const hideTimer = setTimeout(() => {

@@ -4,6 +4,7 @@ import { Dices, Crown, PlusCircle, Backpack, Plus, X, User, Upload, Edit3, Downl
 
 interface CharacterAndDiceProps {
   character: any;
+  party?: any[];
   act: string | number;
   customMapName?: string | null;
   isDM: boolean;
@@ -13,6 +14,10 @@ interface CharacterAndDiceProps {
   onToggleCondition: (charId: string, condition: string) => void;
   onSetTokenSize: (charId: string, size: 1 | 2 | 3) => void;
   onGrantSp: (charId: string | 'ALL', amount: number) => void;
+  onRollDeathSave?: (charId: string) => void;
+  onPartyRest?: (type: 'short' | 'long') => void;
+  onGiveLoot?: (payload: { targetId: string | 'ALL'; itemName: string; itemIcon: string; qty: number; gold: number }) => void;
+  onAnnounce?: (payload: { title: string; text: string; style: 'story' | 'boss' | 'loot' }) => void;
   onSetAct: (act: string | number) => void;
   onSetCustomMap: (mapUrl: string, mapName: string) => void;
   onSpawnEnemies: () => void;
@@ -47,6 +52,7 @@ const BAG_CAPACITY = 12;
 
 export const CharacterAndDice: React.FC<CharacterAndDiceProps> = ({
   character,
+  party = [],
   act,
   customMapName,
   isDM,
@@ -56,6 +62,10 @@ export const CharacterAndDice: React.FC<CharacterAndDiceProps> = ({
   onToggleCondition,
   onSetTokenSize,
   onGrantSp,
+  onRollDeathSave,
+  onPartyRest,
+  onGiveLoot,
+  onAnnounce,
   onSetAct,
   onSetCustomMap,
   onSpawnEnemies,
@@ -92,6 +102,16 @@ export const CharacterAndDice: React.FC<CharacterAndDiceProps> = ({
   const [spAvatarUrl, setSpAvatarUrl] = useState<string | null>(null);
   const [spSize, setSpSize] = useState<1 | 2 | 3>(1);
   const [spHidden, setSpHidden] = useState(false);
+
+  // DM Announcement & Loot Drop state
+  const [annTitle, setAnnTitle] = useState('');
+  const [annText, setAnnText] = useState('');
+  const [annStyle, setAnnStyle] = useState<'story' | 'boss' | 'loot'>('story');
+  const [lootTarget, setLootTarget] = useState<string>('ALL');
+  const [lootItemName, setLootItemName] = useState('');
+  const [lootIcon, setLootIcon] = useState('🧪');
+  const [lootQty, setLootQty] = useState(1);
+  const [lootGold, setLootGold] = useState(0);
 
   const activeTab = isDM ? tab : 'sheet';
 
@@ -350,6 +370,51 @@ export const CharacterAndDice: React.FC<CharacterAndDiceProps> = ({
                     <div className="font-mono font-black text-sm text-sky-400">{character.mp ?? 0}/{character.maxMp ?? 0}</div>
                   </div>
                 </div>
+
+                {/* Death Saving Throws (at 0 HP) */}
+                {character.hp === 0 && !character.isEnemy && onRollDeathSave && (
+                  <div className="p-2.5 rounded-xl bg-rose-950/50 border border-rose-500/70 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-rose-300 text-xs">💀 Death Saving Throws</span>
+                      <span className="text-[10px] text-rose-300/80">10+ รอด / 20 ฟื้น 1 HP</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px]">
+                      <div className="flex items-center gap-1">
+                        <span className="text-emerald-300 font-semibold">รอด:</span>
+                        {[0, 1, 2].map((i) => (
+                          <span
+                            key={i}
+                            className={`w-3 h-3 rounded-full border ${
+                              (character.deathSaves?.success || 0) > i
+                                ? 'bg-emerald-400 border-emerald-300'
+                                : 'bg-slate-900 border-slate-700'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-rose-300 font-semibold">พลาด:</span>
+                        {[0, 1, 2].map((i) => (
+                          <span
+                            key={i}
+                            className={`w-3 h-3 rounded-full border ${
+                              (character.deathSaves?.fail || 0) > i
+                                ? 'bg-rose-500 border-rose-400'
+                                : 'bg-slate-900 border-slate-700'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => onRollDeathSave(character.id)}
+                      className="w-full py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-lg transition"
+                    >
+                      🎲 ทอยหนีตาย (d20)
+                    </button>
+                  </div>
+                )}
 
                 <div className="flex items-center justify-between gap-1.5">
                   <button
@@ -882,6 +947,157 @@ export const CharacterAndDice: React.FC<CharacterAndDiceProps> = ({
           </div>
 
           <div className="space-y-2 pt-2 border-t border-slate-800">
+            {/* DM Scene Announcement / Boss Intro */}
+            {onAnnounce && (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!annTitle.trim() && !annText.trim()) return;
+                  onAnnounce({ title: annTitle.trim() || 'ประกาศจาก DM', text: annText.trim(), style: annStyle });
+                  setAnnTitle('');
+                  setAnnText('');
+                }}
+                className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-2"
+              >
+                <div className="font-bold text-indigo-300">📢 ประกาศ / เปิดตัวบอส</div>
+                <div className="grid grid-cols-3 gap-1 text-[10px] font-bold">
+                  {([
+                    { id: 'story', label: '📜 เนื้อเรื่อง' },
+                    { id: 'boss', label: '🐉 บอส' },
+                    { id: 'loot', label: '🎁 สมบัติ' }
+                  ] as const).map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => setAnnStyle(s.id)}
+                      className={`py-1 rounded border ${
+                        annStyle === s.id ? 'bg-indigo-600 border-indigo-400 text-white' : 'bg-slate-900 border-slate-800 text-slate-400'
+                      }`}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="text"
+                  value={annTitle}
+                  onChange={(e) => setAnnTitle(e.target.value)}
+                  placeholder="หัวข้อ (เช่น มังกรแดงปรากฏตัว!)"
+                  className="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 focus:outline-none focus:border-indigo-500"
+                />
+                <input
+                  type="text"
+                  value={annText}
+                  onChange={(e) => setAnnText(e.target.value)}
+                  placeholder="ข้อความบรรยายสั้นๆ..."
+                  className="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 focus:outline-none focus:border-indigo-500"
+                />
+                <button type="submit" className="w-full py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold">
+                  📣 ประกาศให้ทุกคนเห็น
+                </button>
+              </form>
+            )}
+
+            {/* DM Loot / Gold Drop */}
+            {onGiveLoot && (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!lootItemName.trim() && lootGold <= 0) return;
+                  onGiveLoot({
+                    targetId: lootTarget,
+                    itemName: lootItemName.trim(),
+                    itemIcon: lootIcon,
+                    qty: Math.max(1, lootQty),
+                    gold: Math.max(0, lootGold)
+                  });
+                  setLootItemName('');
+                  setLootGold(0);
+                }}
+                className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-2"
+              >
+                <div className="font-bold text-emerald-300">🎁 ส่งไอเทม / แจก Gold</div>
+                <select
+                  value={lootTarget}
+                  onChange={(e) => setLootTarget(e.target.value)}
+                  className="w-full px-2 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs"
+                >
+                  <option value="ALL">👥 ทั้งปาร์ตี้ (ทุกคน)</option>
+                  {party
+                    .filter((m) => !m.isEnemy)
+                    .map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.icon || '🧙'} {m.name.split('(')[0].trim()}
+                      </option>
+                    ))}
+                </select>
+                <div className="flex flex-wrap gap-1">
+                  {ITEM_ICONS.map((ic) => (
+                    <button
+                      key={ic}
+                      type="button"
+                      onClick={() => setLootIcon(ic)}
+                      className={`w-6 h-6 rounded border text-xs ${
+                        lootIcon === ic ? 'bg-emerald-600 border-white' : 'bg-slate-900 border-slate-800'
+                      }`}
+                    >
+                      {ic}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex gap-1">
+                  <input
+                    type="text"
+                    value={lootItemName}
+                    onChange={(e) => setLootItemName(e.target.value)}
+                    placeholder="ชื่อไอเทม (ถ้ามี)"
+                    className="flex-1 px-2 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs"
+                  />
+                  <input
+                    type="number"
+                    min={1}
+                    value={lootQty}
+                    onChange={(e) => setLootQty(Number(e.target.value))}
+                    className="w-12 px-1 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs text-center font-mono"
+                    title="จำนวน"
+                  />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] text-amber-300 font-bold">🪙 Gold:</span>
+                  <input
+                    type="number"
+                    min={0}
+                    value={lootGold}
+                    onChange={(e) => setLootGold(Number(e.target.value))}
+                    className="flex-1 px-2 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs font-mono"
+                  />
+                  <button type="submit" className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold">
+                    ส่งของ
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Short / Long Rest */}
+            {onPartyRest && (
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => onPartyRest('short')}
+                  className="py-2 rounded-lg bg-sky-600/20 border border-sky-500/40 text-sky-300 hover:bg-sky-600/30 font-bold"
+                >
+                  🏕️ Short Rest (50%)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onPartyRest('long')}
+                  className="py-2 rounded-lg bg-emerald-600/20 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-600/30 font-bold"
+                >
+                  🛏️ Long Rest (100%)
+                </button>
+              </div>
+            )}
+
             <button
               onClick={() => onGrantSp('ALL', 1)}
               className="w-full py-2 rounded-lg bg-amber-600/20 border border-amber-500/40 text-amber-300 hover:bg-amber-600/30 font-bold"
