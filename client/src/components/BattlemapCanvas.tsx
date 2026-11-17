@@ -30,6 +30,8 @@ interface BattlemapCanvasProps {
   customMapName?: string | null;
   fog?: string[];
   isDM: boolean;
+  myCharId?: string | null;
+  combatTurn?: { inCombat: boolean; round: number; currentChar: any | null };
   tokens: Token[];
   pings: Ping[];
   selectedCharId: string | null;
@@ -55,6 +57,8 @@ export const BattlemapCanvas: React.FC<BattlemapCanvasProps> = ({
   customMapName,
   fog = [],
   isDM,
+  myCharId,
+  combatTurn,
   tokens,
   pings,
   selectedCharId,
@@ -71,6 +75,8 @@ export const BattlemapCanvas: React.FC<BattlemapCanvasProps> = ({
   const [tool, setTool] = useState<'move' | 'ping' | 'ruler' | 'fog'>('move');
   const [rulerStart, setRulerStart] = useState<{ x: number; y: number } | null>(null);
   const [rulerHover, setRulerHover] = useState<{ x: number; y: number } | null>(null);
+
+  const canMoveToken = (tokenId: string) => isDM || Boolean(myCharId && tokenId === myCharId);
 
   const scene = act === 'custom' && customMapUrl
     ? { title: customMapName || 'Custom Map', mapImg: customMapUrl }
@@ -116,12 +122,16 @@ export const BattlemapCanvas: React.FC<BattlemapCanvasProps> = ({
     });
 
     if (tokenHere) {
-      setActiveTokenId(activeTokenId === tokenHere.id ? null : tokenHere.id);
+      if (canMoveToken(tokenHere.id)) {
+        setActiveTokenId(activeTokenId === tokenHere.id ? null : tokenHere.id);
+      } else {
+        setActiveTokenId(null);
+      }
       onSelectToken(tokenHere.id);
       return;
     }
 
-    if (activeTokenId) {
+    if (activeTokenId && canMoveToken(activeTokenId)) {
       onMoveToken(activeTokenId, x, y);
       setActiveTokenId(null);
     }
@@ -133,6 +143,35 @@ export const BattlemapCanvas: React.FC<BattlemapCanvasProps> = ({
 
   return (
     <div className="relative flex-1 bg-slate-950 overflow-hidden flex flex-col">
+      {/* Floating Combat Turn Banner (Top-Left) */}
+      {combatTurn?.inCombat && combatTurn.currentChar && (
+        <div
+          className={`absolute top-3 left-3 z-20 flex items-center gap-2 px-3 py-1.5 rounded-full backdrop-blur-md border shadow-xl text-xs ${
+            combatTurn.currentChar.id === myCharId
+              ? 'bg-emerald-950/90 border-emerald-400 text-emerald-100 ring-2 ring-emerald-400/40'
+              : 'bg-slate-900/90 border-amber-500/60 text-slate-100'
+          }`}
+        >
+          <span className="px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 font-mono font-black text-[10px]">
+            ⚔️ R{combatTurn.round}
+          </span>
+          <span className="text-slate-300">เทิร์นของ:</span>
+          <span className="flex items-center gap-1.5 font-bold text-white">
+            {combatTurn.currentChar.avatarUrl ? (
+              <img src={combatTurn.currentChar.avatarUrl} alt={combatTurn.currentChar.name} className="w-5 h-5 rounded-full object-cover border border-white/60" />
+            ) : (
+              <span>{combatTurn.currentChar.icon || '🌟'}</span>
+            )}
+            <span>{combatTurn.currentChar.name.split('(')[0].trim()}</span>
+          </span>
+          {combatTurn.currentChar.id === myCharId && (
+            <span className="px-2 py-0.5 rounded-full bg-emerald-500 text-slate-950 font-black text-[10px] animate-pulse">
+              ตาคุณแล้ว!
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Floating Map Controls (Top-Right) */}
       <div className="absolute top-3 right-3 z-20 flex flex-wrap items-center gap-1 bg-slate-900/90 backdrop-blur-md border border-slate-700/60 rounded-full px-2.5 py-1 shadow-xl text-xs">
         <button
@@ -280,8 +319,14 @@ export const BattlemapCanvas: React.FC<BattlemapCanvasProps> = ({
                     {/* Token (supports 1x1, 2x2, 3x3 sizes) */}
                     {token && (
                       <div
-                        draggable={tool === 'move'}
-                        onDragStart={() => setDragTokenId(token.id)}
+                        draggable={tool === 'move' && canMoveToken(token.id)}
+                        onDragStart={(e) => {
+                          if (!canMoveToken(token.id)) {
+                            e.preventDefault();
+                            return;
+                          }
+                          setDragTokenId(token.id);
+                        }}
                         style={{
                           backgroundColor: token.color,
                           width: tokenSize > 1 ? `${tokenSize * 100 - 12}%` : '82%',

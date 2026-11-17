@@ -262,6 +262,17 @@ export function App() {
 
   const activeChar = roomState.party.find((c: any) => c.id === selectedCharId) || roomState.party[0] || null;
   const isDM = session.role === 'dm';
+  const sortedForTurn = [...(isDM ? roomState.party : roomState.party.filter((m: any) => !m.hidden))].sort(
+    (a: any, b: any) => (b.init || 0) - (a.init || 0)
+  );
+  const combatTurn = {
+    inCombat: Boolean(roomState.inCombat),
+    round: roomState.round || 1,
+    currentChar:
+      roomState.inCombat && sortedForTurn.length > 0
+        ? sortedForTurn[(roomState.turnIndex || 0) % sortedForTurn.length]
+        : null
+  };
 
   return (
     <div className="h-screen w-screen bg-slate-950 text-slate-100 flex flex-col overflow-hidden">
@@ -394,12 +405,16 @@ export function App() {
         {showLeft && (
           <TurnTracker
             party={roomState.party}
+            inCombat={Boolean(roomState.inCombat)}
+            round={roomState.round || 1}
             turnIndex={roomState.turnIndex}
             selectedCharId={selectedCharId}
             players={roomState.players}
             isDM={isDM}
             onSelectChar={(id) => setSelectedCharId(id)}
             onRollInit={() => dispatchAction({ type: 'roll_initiative' })}
+            onStartCombat={() => dispatchAction({ type: 'start_combat' })}
+            onEndCombat={() => dispatchAction({ type: 'end_combat' })}
             onNextTurn={() => dispatchAction({ type: 'next_turn' })}
             onRemoveEntity={(charId) => dispatchAction({ type: 'remove_entity', payload: { charId } })}
             onToggleHidden={(charId) => dispatchAction({ type: 'toggle_token_hidden', payload: { charId } })}
@@ -414,10 +429,17 @@ export function App() {
             customMapName={roomState.customMapName}
             fog={roomState.fog || []}
             isDM={isDM}
+            myCharId={session.myCharId}
+            combatTurn={combatTurn}
             tokens={roomState.tokens}
             pings={pings}
             selectedCharId={selectedCharId}
-            onMoveToken={(tokenId, x, y) => dispatchAction({ type: 'move_token', payload: { tokenId, x, y } })}
+            onMoveToken={(tokenId, x, y) =>
+              dispatchAction({
+                type: 'move_token',
+                payload: { tokenId, x, y, actorRole: session.role, actorCharId: session.myCharId }
+              })
+            }
             onSelectToken={(tokenId) => {
               if (roomState.party.some((c: any) => c.id === tokenId)) {
                 setSelectedCharId(tokenId);

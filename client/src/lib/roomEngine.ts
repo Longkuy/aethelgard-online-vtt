@@ -21,6 +21,8 @@ export function createInitialRoomState(roomId: string) {
     customMapUrl: null as string | null,
     customMapName: null as string | null,
     fog: [] as string[],
+    inCombat: false,
+    round: 1,
     turnIndex: 0,
     party: [] as any[],
     tokens: [] as any[],
@@ -89,7 +91,10 @@ export function applyRoomAction(prevRoom: any, action: { type: string; payload?:
     }
 
     case 'move_token': {
-      const { tokenId, x, y } = payload;
+      const { tokenId, x, y, actorRole, actorCharId } = payload;
+      if (actorRole && actorRole !== 'dm' && actorCharId !== tokenId) {
+        return { room: prevRoom, error: 'คุณสามารถขยับได้เฉพาะตัวละครของตัวเองเท่านั้น!' };
+      }
       const tok = room.tokens.find((t: any) => t.id === tokenId);
       if (tok) {
         tok.x = Math.max(0, Math.min(15, x));
@@ -269,9 +274,49 @@ export function applyRoomAction(prevRoom: any, action: { type: string; payload?:
       return { room };
     }
 
+    case 'start_combat': {
+      room.inCombat = true;
+      room.round = 1;
+      room.turnIndex = 0;
+      const sorted = [...room.party].sort((a: any, b: any) => (b.init || 0) - (a.init || 0));
+      const first = sorted[0];
+      pushLog(room, {
+        type: 'system',
+        who: 'COMBAT',
+        text: `⚔️ เข้าสู่ Phase ต่อสู้! Round 1${first ? ` — เทิร์นของ ${first.name}` : ''}`
+      });
+      return { room };
+    }
+
+    case 'end_combat': {
+      room.inCombat = false;
+      room.round = 1;
+      room.turnIndex = 0;
+      pushLog(room, {
+        type: 'system',
+        who: 'COMBAT',
+        text: '🕊️ จบการต่อสู้ (Exploration Phase)'
+      });
+      return { room };
+    }
+
     case 'next_turn': {
-      if (room.party.length > 0) {
-        room.turnIndex = (room.turnIndex + 1) % room.party.length;
+      if (!room.inCombat || room.party.length === 0) return { room };
+      const sorted = [...room.party].sort((a: any, b: any) => (b.init || 0) - (a.init || 0));
+      const nextIdx = room.turnIndex + 1;
+      if (nextIdx >= sorted.length) {
+        room.turnIndex = 0;
+        room.round = (room.round || 1) + 1;
+      } else {
+        room.turnIndex = nextIdx;
+      }
+      const current = sorted[room.turnIndex];
+      if (current) {
+        pushLog(room, {
+          type: 'system',
+          who: 'TURN',
+          text: `⏳ Round ${room.round} — เทิร์นของ ${current.name}`
+        });
       }
       return { room };
     }

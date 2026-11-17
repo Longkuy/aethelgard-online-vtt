@@ -1,14 +1,18 @@
 import React from 'react';
-import { Dices, SkipForward, Users } from 'lucide-react';
+import { Dices, SkipForward, Users, Swords, Flag } from 'lucide-react';
 
 interface TurnTrackerProps {
   party: any[];
+  inCombat: boolean;
+  round: number;
   turnIndex: number;
   selectedCharId: string | null;
   players: Record<string, any>;
   isDM: boolean;
   onSelectChar: (id: string) => void;
   onRollInit: () => void;
+  onStartCombat: () => void;
+  onEndCombat: () => void;
   onNextTurn: () => void;
   onRemoveEntity: (id: string) => void;
   onToggleHidden?: (id: string) => void;
@@ -25,43 +29,87 @@ const CONDITION_EMOJI: Record<string, string> = {
 
 export const TurnTracker: React.FC<TurnTrackerProps> = ({
   party,
+  inCombat,
+  round,
   turnIndex,
   selectedCharId,
   players,
   isDM,
   onSelectChar,
   onRollInit,
+  onStartCombat,
+  onEndCombat,
   onNextTurn,
   onRemoveEntity,
   onToggleHidden
 }) => {
   const visibleParty = isDM ? party : party.filter((m) => !m.hidden);
   const sorted = [...visibleParty].sort((a, b) => (b.init || 0) - (a.init || 0));
-  const activeId = sorted[turnIndex % Math.max(1, sorted.length)]?.id;
+  const currentTurnChar = inCombat && sorted.length > 0 ? sorted[turnIndex % sorted.length] : null;
+  const activeId = currentTurnChar?.id || null;
   const onlineList = Object.values(players || {});
 
   return (
     <aside className="w-56 bg-slate-900/95 border-r border-slate-800/80 flex flex-col shrink-0">
-      <div className="p-2.5 border-b border-slate-800/80 flex items-center justify-between">
-        <h2 className="font-bold text-xs uppercase tracking-wider text-slate-400">ปาร์ตี้ & เทิร์น</h2>
-        <div className="flex gap-1">
-          <button
-            onClick={onRollInit}
-            className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-xs"
-            title="ทอย Initiative ทั้งหมด"
-          >
-            <Dices className="w-3.5 h-3.5" />
-          </button>
-          {isDM && (
+      <div className="p-2.5 border-b border-slate-800/80 space-y-2">
+        <div className="flex items-center justify-between">
+          <h2 className="font-bold text-xs uppercase tracking-wider text-slate-400">ปาร์ตี้ & เทิร์น</h2>
+          <div className="flex gap-1">
             <button
-              onClick={onNextTurn}
-              className="px-2 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold flex items-center gap-1"
-              title="เทิร์นถัดไป"
+              onClick={onRollInit}
+              className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-xs"
+              title="ทอย Initiative ทั้งหมด"
             >
-              Next <SkipForward className="w-3 h-3" />
+              <Dices className="w-3.5 h-3.5" />
             </button>
-          )}
+            {isDM && inCombat && (
+              <button
+                onClick={onNextTurn}
+                className="px-2 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold flex items-center gap-1"
+                title="เทิร์นถัดไป"
+              >
+                Next <SkipForward className="w-3 h-3" />
+              </button>
+            )}
+          </div>
         </div>
+
+        {/* Combat Phase Banner & DM Toggle */}
+        {inCombat ? (
+          <div className="p-2 rounded-xl bg-amber-500/15 border border-amber-500/40 space-y-1.5">
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="font-bold text-amber-300 flex items-center gap-1">
+                <Swords className="w-3.5 h-3.5" /> Phase ต่อสู้ • R{round}
+              </span>
+              {isDM && (
+                <button
+                  onClick={onEndCombat}
+                  className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-rose-600/80 text-[10px] text-slate-300 hover:text-white font-semibold flex items-center gap-0.5"
+                  title="จบการต่อสู้"
+                >
+                  <Flag className="w-2.5 h-2.5" /> จบ
+                </button>
+              )}
+            </div>
+            {currentTurnChar && (
+              <div className="text-[11px] text-white font-bold truncate">
+                ⏳ เทิร์น: {currentTurnChar.name.split('(')[0].trim()}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex items-center justify-between gap-1.5">
+            <span className="text-[10px] text-slate-400">🌿 นอกการต่อสู้</span>
+            {isDM && (
+              <button
+                onClick={onStartCombat}
+                className="px-2 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-bold flex items-center gap-1 shadow"
+              >
+                <Swords className="w-3 h-3" /> เริ่มต่อสู้
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto custom-scroll p-2 space-y-1.5">
@@ -71,7 +119,7 @@ export const TurnTracker: React.FC<TurnTrackerProps> = ({
           </div>
         )}
         {sorted.map((c) => {
-          const isTurn = c.id === activeId;
+          const isTurn = inCombat && c.id === activeId;
           const isSel = c.id === selectedCharId;
           const pct = Math.max(0, Math.min(100, Math.round((c.hp / c.maxHp) * 100)));
 
